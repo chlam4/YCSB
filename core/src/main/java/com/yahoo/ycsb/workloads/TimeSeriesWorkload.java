@@ -16,10 +16,10 @@ public class TimeSeriesWorkload extends Workload {
     public boolean doInsert(DB db, Object threadstate) {
         final long ts = i.incrementAndGet();
         final DataPointWithMetricID dp = new DataPointWithMetricID(
-                "testMetric", ts, new StringByteIterator("testValue"));
+                "testField", ts, new StringByteIterator("testValue"));
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
-        if (db.loadTSData("mydb", datapoints) == 0) return true;
+        if (db.insertDatapoints("mydb", "testMeasurement", datapoints) == 0) return true;
         return false;
     }
 

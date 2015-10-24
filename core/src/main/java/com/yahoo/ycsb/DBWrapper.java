@@ -183,7 +183,7 @@ public class DBWrapper extends DB
 	}
 
 	@Override
-    public int loadTSData(String table, List<DataPointWithMetricID> datapoints) {
-        return _db.loadTSData(table, datapoints);
+    public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
+        return _db.insertDatapoints(table, key, datapoints);
     }
 }

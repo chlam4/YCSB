@@ -139,12 +139,13 @@ public abstract class DB
     public abstract int delete(String table, String key);
 
     /**
-     * Load given time series data to the database.
+     * Insert the given time series data points to the database.
      * @param table The name of the table
+     * @param key The name of the key (or measurement)
      * @param datapoints Data points to be inserted
      * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
      */
-    public int loadTSData(String table, List<DataPointWithMetricID> datapoints) {
+    public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
         throw new UnsupportedOperationException();
     }
 }

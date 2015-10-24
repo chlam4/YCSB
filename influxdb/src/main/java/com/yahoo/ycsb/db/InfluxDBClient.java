@@ -19,6 +19,8 @@ import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 public class InfluxDBClient extends DB {
     private InfluxDB influxDB;
+    private int batchSize;
+    private ThreadLocal<BatchPoints> threadLocalBatchPoints;
 
     @Override
     public void init() {
@@ -26,11 +28,15 @@ public class InfluxDBClient extends DB {
         final String url = props.getProperty("influxdb.url", "http://localhost:8086");
         final String user = props.getProperty("influxdb.user", "user");
         final String password = props.getProperty("influxdb.password", "password");
-        final int batchSize = Integer.parseInt(props.getProperty("influxdb.batchsize", "1"));
-        final int batchInterval = Integer.parseInt(props.getProperty("influxdb.batchinterval", "1"));
+        batchSize = Integer.parseInt(props.getProperty("influxdb.batchsize", "1"));
+        //final int batchInterval = Integer.parseInt(props.getProperty("influxdb.batchinterval", "1"));
 
         influxDB = InfluxDBFactory.connect(url, user, password);
-        if (batchSize > 1)  influxDB.enableBatch(batchSize, batchInterval, TimeUnit.MILLISECONDS);
+        //
+        // The batching feature seems broken in this java client that some
+        // records will be lost if the batch size is 10000 or bigger.
+        //
+        //if (batchSize > 1)  influxDB.enableBatch(batchSize, batchInterval, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -67,21 +73,27 @@ public class InfluxDBClient extends DB {
         return 0;
     }
 
-    public int loadTSData(String table, List<DataPointWithMetricID> datapoints) {
-        BatchPoints batchPoints = BatchPoints
-                .database(table)
-//                .tag("async", "true")
-                .retentionPolicy("default")
-                .consistency(ConsistencyLevel.ALL)
-                .build();
-        for (DataPointWithMetricID dp : datapoints) {
-            Point p = Point.measurement(dp.getMetricId())
-                    .time(dp.getTimestamp(), TimeUnit.MILLISECONDS)
-                    .field("value", 1.0).build();
-            batchPoints.point(p);
-            influxDB.write(table, "default", p);
+    @Override
+    public int insertDatapoints(String table, String measurement, List<DataPointWithMetricID> datapoints) {
+        if (threadLocalBatchPoints == null) {
+            BatchPoints newBatchPoints = BatchPoints.database(table)
+                    // .tag("async", "true")
+                    .retentionPolicy("default")
+                    .consistency(ConsistencyLevel.ALL).build();
+            threadLocalBatchPoints = new ThreadLocal<BatchPoints>();
+            threadLocalBatchPoints.set(newBatchPoints);
         }
-        //influxDB.write(batchPoints);
+        BatchPoints batchPoints = threadLocalBatchPoints.get();
+        for (DataPointWithMetricID dp : datapoints) {
+            Point p = Point.measurement(measurement)
+                    .time(dp.getTimestamp(), TimeUnit.MILLISECONDS)
+                    .field(dp.getMetricId(), 1.0).build();
+            batchPoints.point(p);
+        }
+        if (batchPoints.getPoints().size() >= batchSize) {
+            influxDB.write(batchPoints);
+            threadLocalBatchPoints = null;
+        }
         return 0;
     }
 }
