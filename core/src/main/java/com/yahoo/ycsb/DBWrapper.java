@@ -18,11 +18,13 @@
 package com.yahoo.ycsb;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
 import com.yahoo.ycsb.measurements.Measurements;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
  * Wrapper around a "real" DB that measures latencies and counts return codes.
@@ -179,4 +181,9 @@ public class DBWrapper extends DB
 		_measurements.reportReturnCode("DELETE",res);
 		return res;
 	}
+
+	@Override
+    public int loadTSData(String table, List<DataPointWithMetricID> datapoints) {
+        return _db.loadTSData(table, datapoints);
+    }
 }

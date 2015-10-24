@@ -18,9 +18,12 @@
 package com.yahoo.ycsb;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
  * A layer for accessing a database to be benchmarked. Each thread in the client
@@ -133,5 +136,15 @@ public abstract class DB
 	 * @param key The record key of the record to delete.
 	 * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
 	 */
-	public abstract int delete(String table, String key);
+    public abstract int delete(String table, String key);
+
+    /**
+     * Load given time series data to the database.
+     * @param table The name of the table
+     * @param datapoints Data points to be inserted
+     * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
+     */
+    public int loadTSData(String table, List<DataPointWithMetricID> datapoints) {
+        throw new UnsupportedOperationException();
+    }
 }
