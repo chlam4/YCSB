@@ -79,12 +79,13 @@ public class InfluxDBClient extends DB {
         // TODO Auto-generated method stub
         return 0;
     }
+
     @Override
     public int insertDatapoints(final String table, final String measurement, final List<DataPointWithMetricID> datapoints) {
         for (final DataPointWithMetricID dp : datapoints) {
             final Point p = Point.measurement(measurement)
                     .time(dp.getTimestamp(), TimeUnit.MILLISECONDS)
-                    .field(dp.getMetricId(), 1.0).build();
+                    .field(dp.getMetricId(), dp.getValue()).build();
             influxDB.write(table, "default", p);
         }
         return 0;
