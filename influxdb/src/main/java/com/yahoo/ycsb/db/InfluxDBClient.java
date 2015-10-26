@@ -38,12 +38,12 @@ public class InfluxDBClient extends DB {
 
     @Override
     public void cleanup() {
-        try {
-            // Let the timer thread in the batch processor to catch up
-            Thread.sleep(batchInterval);
-        } catch (InterruptedException e) {
-            // ignore
-        }
+        //
+        // Disabling batching will also flush the remaining points in the
+        // outstanding batch into the database, thereby helping complete
+        // all insertions in the test.
+        //
+        influxDB.disableBatch();
     }
 
     @Override
