@@ -23,6 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
+import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
@@ -148,4 +149,23 @@ public abstract class DB
     public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Perform a query on the given metric (key/field) over a period of time.
+     * @param table The name of the table
+     * @param key The name of the key (or measurement)
+     * @param field The name of the field (or metric)
+     * @param startTime The starting time
+     * @param endTime The ending time
+     * @param timeUnit Time unit
+     * @param result The query result
+     * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
+     */
+    public int scanDatapoints(String table, String key, String field,
+            long startTime, long endTime,
+            java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+        throw new UnsupportedOperationException();
+    }
+    // TODO: Define an interface for retrieving multiple metrics
+    // TODO: Define an interface for temporal aggregation
 }

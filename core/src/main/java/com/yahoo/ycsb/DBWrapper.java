@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import com.yahoo.ycsb.measurements.Measurements;
+import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
@@ -185,5 +186,13 @@ public class DBWrapper extends DB
 	@Override
     public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
         return _db.insertDatapoints(table, key, datapoints);
+	}
+
+	@Override
+    public int scanDatapoints(String table, String key, String field,
+            long startTime, long endTime,
+            java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+        return _db.scanDatapoints(table, key, field, startTime, endTime,
+                timeUnit, result);
     }
 }

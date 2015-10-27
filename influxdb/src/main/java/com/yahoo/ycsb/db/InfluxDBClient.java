@@ -10,9 +10,11 @@ import java.util.concurrent.TimeUnit;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
+import org.influxdb.dto.Query;
 
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 public class InfluxDBClient extends DB {
@@ -88,6 +90,17 @@ public class InfluxDBClient extends DB {
                     .field(dp.getMetricId(), dp.getValue()).build();
             influxDB.write(table, "default", p);
         }
+        return 0;
+    }
+
+    @Override
+    public int scanDatapoints(String table, String key, String field,
+            long startTime, long endTime,
+            java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+        String qs = String.format("SELECT %s FROM %s WHERE time >= %ld AND time <= %ld",
+                field, key, startTime, endTime);
+        Query q = new Query(qs, table);
+        influxDB.query(q);  // TODO: shall we parse the query results?
         return 0;
     }
 }
