@@ -184,9 +184,11 @@ public class DBWrapper extends DB
 	}
 
 	@Override
-    public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
-        return _db.insertDatapoints(table, key, datapoints);
-	}
+    public int insertDatapoints(String table, String key,
+            java.util.concurrent.TimeUnit timeUnit,
+            List<DataPointWithMetricID> datapoints) {
+        return _db.insertDatapoints(table, key, timeUnit, datapoints);
+    }
 
 	@Override
     public int scanDatapoints(String table, String key, String field,

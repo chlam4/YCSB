@@ -143,10 +143,13 @@ public abstract class DB
      * Insert the given time series data points to the database.
      * @param table The name of the table
      * @param key The name of the key (or measurement)
+     * @param timeUnit Time unit
      * @param datapoints Data points to be inserted
      * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
      */
-    public int insertDatapoints(String table, String key, List<DataPointWithMetricID> datapoints) {
+    public int insertDatapoints(String table, String key,
+            java.util.concurrent.TimeUnit timeUnit,
+            List<DataPointWithMetricID> datapoints) {
         throw new UnsupportedOperationException();
     }
 

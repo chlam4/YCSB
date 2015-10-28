@@ -83,10 +83,11 @@ public class InfluxDBClient extends DB {
     }
 
     @Override
-    public int insertDatapoints(final String table, final String measurement, final List<DataPointWithMetricID> datapoints) {
+    public int insertDatapoints(final String table, final String measurement,
+            TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
         for (final DataPointWithMetricID dp : datapoints) {
             final Point p = Point.measurement(measurement)
-                    .time(dp.getTimestamp(), TimeUnit.NANOSECONDS)
+                    .time(dp.getTimestamp(), timeUnit)
                     .field(dp.getMetricId(), dp.getValue()).build();
             influxDB.write(table, "default", p);
         }
@@ -95,12 +96,13 @@ public class InfluxDBClient extends DB {
 
     @Override
     public int scanDatapoints(String table, String key, String field,
-            long startTime, long endTime,
-            java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
-        String qs = String.format("SELECT %s FROM %s WHERE time >= %ld AND time <= %ld",
-                field, key, startTime, endTime);
+            long startTime, long endTime, TimeUnit timeUnit,
+            Vector<DataPoint> result) {
+        String qs = String.format(
+                "SELECT %s FROM %s WHERE time >= %ld AND time <= %ld", field,
+                key, startTime, endTime);
         Query q = new Query(qs, table);
-        influxDB.query(q);  // TODO: shall we parse the query results?
+        influxDB.query(q); // TODO: shall we parse the query results?
         return 0;
     }
 }
