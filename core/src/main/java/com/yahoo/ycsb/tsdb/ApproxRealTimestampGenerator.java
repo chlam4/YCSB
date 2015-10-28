@@ -33,7 +33,7 @@ public class ApproxRealTimestampGenerator implements TimestampGenerator {
     }
 
     @Override
-    public long nextTimestamp() {
+    public long next() {
         long currTime = timeUnit.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
         synchronized(this) {
             if (currTime > baseTime) {

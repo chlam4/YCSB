@@ -45,7 +45,7 @@ public class InfluxDBClient extends DB {
         // outstanding batch into the database, thereby helping complete
         // all insertions in the test.
         //
-        influxDB.disableBatch();
+        if (batchSize > 1)  influxDB.disableBatch();
     }
 
     @Override
@@ -99,10 +99,9 @@ public class InfluxDBClient extends DB {
             long startTime, long endTime, TimeUnit timeUnit,
             Vector<DataPoint> result) {
         String qs = String.format(
-                "SELECT %s FROM %s WHERE time >= %ld AND time <= %ld", field,
+                "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
                 key, startTime, endTime);
-        Query q = new Query(qs, table);
-        influxDB.query(q); // TODO: shall we parse the query results?
+        influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
         return 0;
     }
 }

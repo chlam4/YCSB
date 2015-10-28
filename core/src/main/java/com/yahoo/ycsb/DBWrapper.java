@@ -187,14 +187,26 @@ public class DBWrapper extends DB
     public int insertDatapoints(String table, String key,
             java.util.concurrent.TimeUnit timeUnit,
             List<DataPointWithMetricID> datapoints) {
-        return _db.insertDatapoints(table, key, timeUnit, datapoints);
+        long ist=_measurements.getIntendedtartTimeNs();
+        long st = System.nanoTime();
+        int res=_db.insertDatapoints(table, key, timeUnit, datapoints);
+        long en=System.nanoTime();
+        measure("INSERTDATAPOINTS",ist, st, en);
+        _measurements.reportReturnCode("INSERTDATAPOINTS",res);
+        return res;
     }
 
 	@Override
     public int scanDatapoints(String table, String key, String field,
             long startTime, long endTime,
             java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
-        return _db.scanDatapoints(table, key, field, startTime, endTime,
+        long ist=_measurements.getIntendedtartTimeNs();
+        long st = System.nanoTime();
+        int res=_db.scanDatapoints(table, key, field, startTime, endTime,
                 timeUnit, result);
+        long en=System.nanoTime();
+        measure("SCANDATAPOINTS",ist, st, en);
+        _measurements.reportReturnCode("SCANDATAPOINTS",res);
+        return res;
     }
 }
