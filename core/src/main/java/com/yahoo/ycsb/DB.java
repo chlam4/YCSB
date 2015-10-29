@@ -141,7 +141,7 @@ public abstract class DB
 
     /**
      * Insert the given time series data points to the database.
-     * @param table The name of the table
+     * @param table The name of the table/database
      * @param key The name of the key (or measurement)
      * @param timeUnit Time unit
      * @param datapoints Data points to be inserted
