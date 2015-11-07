@@ -240,7 +240,7 @@ class ClientThread extends Thread
   long _opcount;
   double _targetOpsPerMs;
 
-  int _opsdone;
+  long _opsdone;
   int _threadid;
   int _threadcount;
   Object _workloadstate;
@@ -276,7 +276,7 @@ class ClientThread extends Thread
     _completeLatch=completeLatch;
   }
 
-  public int getOpsDone()
+  public long getOpsDone()
   {
     return _opsdone;
   }
@@ -515,7 +515,7 @@ public class Client
    * loaded from conf.
    * @throws IOException Either failed to write to output stream or failed to close it.
    */
-  private static void exportMeasurements(Properties props, int opcount, long runtime)
+  private static void exportMeasurements(Properties props, long opcount, long runtime)
       throws IOException
   {
     MeasurementsExporter exporter = null;
@@ -892,7 +892,7 @@ public class Client
       terminator.start();
     }
 
-    int opsDone = 0;
+    long opsDone = 0;
 
     for (Thread t : clients)
     {
