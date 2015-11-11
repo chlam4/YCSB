@@ -26,7 +26,8 @@ public class TimeSeriesWorkload extends Workload {
     private FloatGenerator floatGenerator;
     private TimestampGenerator queryTS;
     private TimeUnit timeUnit;
-    private String table;
+    private String tablePrefix;
+    private int tableCount;
     private String measurementPrefix;
     private int measurementCount;
     private String fieldPrefix;
@@ -37,7 +38,8 @@ public class TimeSeriesWorkload extends Workload {
     @Override
     public void init(Properties p) throws WorkloadException {
         timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "MILLISECONDS"));
-        table = p.getProperty("tsdb.table", "mydb");
+        tablePrefix = p.getProperty("tsdb.table.prefix", "mydb");
+        tableCount = Integer.parseInt(p.getProperty("tsdb.table.count", "1"));
         measurementPrefix = p.getProperty("tsdb.measurement.prefix", "measurement");
         measurementCount = Integer.parseInt(p.getProperty("tsdb.measurement.count", "1"));
         fieldPrefix = p.getProperty("tsdb.field.prefix", "field");
@@ -57,12 +59,24 @@ public class TimeSeriesWorkload extends Workload {
     }
 
     /**
+     * Compute the corresponding table name given an integer id.
+     * @param id
+     * @return Table name
+     */
+    private String getTableName(final int id) {
+        return tablePrefix + (getMeasurementId(id)*fieldCount + getFieldId(id)) % tableCount;
+    }
+
+    /**
      * Compute the corresponding measurement name given an integer id.
      * @param id
      * @return Measurement name
      */
     private String getMeasurementName(final int id) {
-        return measurementPrefix + (id/fieldCount)%measurementCount;
+        return measurementPrefix + getMeasurementId(id);
+    }
+    private int getMeasurementId(final int id) {
+        return (id/fieldCount)%measurementCount;
     }
 
     /**
@@ -71,12 +85,16 @@ public class TimeSeriesWorkload extends Workload {
      * @return Field name
      */
     private String getFieldName(final int id) {
-        return fieldPrefix + id%fieldCount;
+        return fieldPrefix + getFieldId(id);
+    }
+    private int getFieldId(final int id) {
+        return id%fieldCount;
     }
 
     @Override
     public boolean doInsert(DB db, Object threadstate) {
         final int id = index.getAndIncrement();
+        final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
         final DataPointWithMetricID dp = new DataPointWithMetricID(
@@ -100,6 +118,7 @@ public class TimeSeriesWorkload extends Workload {
             endTime = tmp;
         }
         final int id = rand.nextInt(fieldCount * measurementCount);
+        final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
         if (db.scanDatapoints(table, measurement, field, startTime, endTime,
