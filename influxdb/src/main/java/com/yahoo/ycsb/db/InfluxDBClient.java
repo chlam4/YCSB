@@ -2,9 +2,11 @@ package com.yahoo.ycsb.db;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.influxdb.InfluxDB;
@@ -20,6 +22,7 @@ import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 public class InfluxDBClient extends DB {
     private InfluxDB influxDB;
     private int batchSize, batchInterval;
+    private static final Map<String, Boolean> tableCreatedMap = new ConcurrentHashMap<String, Boolean>();
 
     @Override
     public void init() {
@@ -31,10 +34,6 @@ public class InfluxDBClient extends DB {
         batchInterval = Integer.parseInt(props.getProperty("influxdb.batchinterval", "1"));
 
         influxDB = InfluxDBFactory.connect(url, user, password);
-        //
-        // The batching feature seems broken in this java client that some
-        // records will be lost if the batch size is 10000 or bigger.
-        //
         if (batchSize > 1)  influxDB.enableBatch(batchSize, batchInterval, TimeUnit.MILLISECONDS);
     }
 
@@ -82,9 +81,21 @@ public class InfluxDBClient extends DB {
         return 0;
     }
 
+    /**
+     * Create a database table if it doesn't exist.
+     * @param table Name of the database table
+     */
+    private void createTableIfNotExists(final String table) {
+        final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
+        if (tableCreated == null || tableCreated != true) {
+            influxDB.createDatabase(table);
+        }
+    }
+
     @Override
     public int insertDatapoints(final String table, final String measurement,
             TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
+        createTableIfNotExists(table);
         for (final DataPointWithMetricID dp : datapoints) {
             final Point p = Point.measurement(measurement)
                     .time(dp.getTimestamp(), timeUnit)
@@ -98,6 +109,7 @@ public class InfluxDBClient extends DB {
     public int scanDatapoints(String table, String key, String field,
             long startTime, long endTime, TimeUnit timeUnit,
             Vector<DataPoint> result) {
+        createTableIfNotExists(table);
         String qs = String.format(
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
                 key, startTime, endTime);
