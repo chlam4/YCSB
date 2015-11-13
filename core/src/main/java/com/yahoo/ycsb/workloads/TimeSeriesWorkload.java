@@ -22,10 +22,11 @@ import com.yahoo.ycsb.tsdb.TimestampGenerator;
 import com.yahoo.ycsb.tsdb.ApproxRealTimestampGenerator;
 
 public class TimeSeriesWorkload extends Workload {
-    private static final TimestampGenerator loadTS = new ApproxRealTimestampGenerator(TimeUnit.NANOSECONDS);
+    private static final TimestampGenerator loadTSgen = new ApproxRealTimestampGenerator(TimeUnit.NANOSECONDS);
     private FloatGenerator floatGenerator;
-    private TimestampGenerator queryTS;
+    private TimestampGenerator queryTSgen;
     private TimeUnit timeUnit;
+    private long queryLength;   // in the specified timeUnit
     private String tablePrefix;
     private int tableCount;
     private String measurementPrefix;
@@ -53,9 +54,11 @@ public class TimeSeriesWorkload extends Workload {
         } else {
             floatGenerator = new FixedFloatGenerator(fixed);
         }
-        final long floorTS = Long.parseLong(p.getProperty("query.timestamp.lower", "0"));
-        final long ceilingTS = Long.parseLong(p.getProperty("query.timestamp.upper", Long.toString(Long.MAX_VALUE)));
-        queryTS = new RandomTimestampGenerator(floorTS, ceilingTS);
+        queryLength = Long.parseLong(p.getProperty("tsdb.query.length", Long.toString(timeUnit.convert(1, TimeUnit.HOURS))));
+        final Long currTime = timeUnit.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // in specified unit
+        final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
+        final long upperbound = Long.parseLong(p.getProperty("tsdb.query.upperbound", currTime.toString()));
+        queryTSgen = new RandomTimestampGenerator(lowerbound, upperbound);
     }
 
     /**
@@ -98,7 +101,7 @@ public class TimeSeriesWorkload extends Workload {
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
         final DataPointWithMetricID dp = new DataPointWithMetricID(
-                field, loadTS.next(), new FloatByteIterator(floatGenerator.nextFloat()));
+                field, loadTSgen.next(), new FloatByteIterator(floatGenerator.nextFloat()));
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
         if (db.insertDatapoints(table, measurement, TimeUnit.NANOSECONDS,
@@ -110,18 +113,12 @@ public class TimeSeriesWorkload extends Workload {
 
     @Override
     public boolean doTransaction(DB db, Object threadstate) {
-        long startTime = queryTS.next();
-        long endTime = queryTS.next();
-        if (startTime > endTime) {
-            final long tmp = startTime;
-            startTime = endTime;
-            endTime = tmp;
-        }
+        long endTime = queryTSgen.next();
         final int id = rand.nextInt(fieldCount * measurementCount);
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
-        if (db.scanDatapoints(table, measurement, field, startTime, endTime,
+        if (db.scanDatapoints(table, measurement, field, endTime-queryLength, endTime,
                 timeUnit, new Vector<DataPoint>()) == 0) {
             return true;
         }

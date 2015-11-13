@@ -11,7 +11,10 @@ public class RandomTimestampGenerator implements TimestampGenerator {
     private final long ceiling; // exclusive
 
     public RandomTimestampGenerator(long floor, long ceiling) {
-        if (floor > ceiling) {
+        if (floor == ceiling) {
+            this.floor = floor;
+            this.ceiling = floor + 1;   // to avoid DivideByZeroError
+        } else if (floor > ceiling){
             this.floor = ceiling;
             this.ceiling = floor;
         } else {
