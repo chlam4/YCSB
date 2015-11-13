@@ -106,13 +106,15 @@ public class InfluxDBClient extends DB {
     }
 
     @Override
-    public int scanDatapoints(String table, String key, String field,
-            long startTime, long endTime, TimeUnit timeUnit,
-            Vector<DataPoint> result) {
+    public int scanDatapoints(final String table, final String key, final String field,
+            final long startTime, final long endTime, final TimeUnit timeUnit,
+            final Vector<DataPoint> result) {
         createTableIfNotExists(table);
-        String qs = String.format(
+        final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
+        final long endTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
+        final String qs = String.format(
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
-                key, startTime, endTime);
+                key, startTimeInNano, endTimeInNano);
         influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
         return 0;
     }
