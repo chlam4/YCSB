@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,6 +14,7 @@ import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
@@ -23,6 +25,7 @@ public class InfluxDBClient extends DB {
     private InfluxDB influxDB;
     private int batchSize, batchInterval;
     private static final Map<String, Boolean> tableCreatedMap = new ConcurrentHashMap<String, Boolean>();
+    private static final Random rand = new Random();
 
     @Override
     public void init() {
@@ -115,7 +118,10 @@ public class InfluxDBClient extends DB {
         final String qs = String.format(
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
                 key, startTimeInNano, endTimeInNano);
-        influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
+        final QueryResult queryResult = influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
+        if (rand.nextInt(1000) == 0) {
+            System.out.println(String.format("  Query: %s\n  Result: %s", qs, queryResult.toString()));
+        }
         return 0;
     }
 }
