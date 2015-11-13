@@ -111,7 +111,7 @@ public class InfluxDBClient extends DB {
             final Vector<DataPoint> result) {
         createTableIfNotExists(table);
         final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
-        final long endTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
+        final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
         final String qs = String.format(
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
                 key, startTimeInNano, endTimeInNano);
