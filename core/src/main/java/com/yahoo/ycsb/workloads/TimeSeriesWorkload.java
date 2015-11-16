@@ -6,7 +6,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.FloatByteIterator;
@@ -33,7 +33,7 @@ public class TimeSeriesWorkload extends Workload {
     private int measurementCount;
     private String fieldPrefix;
     private int fieldCount;
-    private static final AtomicInteger index = new AtomicInteger();
+    private static final AtomicLong index = new AtomicLong();
     private static final Random rand = new Random();
 
     @Override
@@ -62,41 +62,41 @@ public class TimeSeriesWorkload extends Workload {
     }
 
     /**
-     * Compute the corresponding table name given an integer id.
+     * Compute the corresponding table name given a long integer id.
      * @param id
      * @return Table name
      */
-    private String getTableName(final int id) {
+    private String getTableName(final long id) {
         return tablePrefix + (getMeasurementId(id)*fieldCount + getFieldId(id)) % tableCount;
     }
 
     /**
-     * Compute the corresponding measurement name given an integer id.
+     * Compute the corresponding measurement name given a long integer id.
      * @param id
      * @return Measurement name
      */
-    private String getMeasurementName(final int id) {
+    private String getMeasurementName(final long id) {
         return measurementPrefix + getMeasurementId(id);
     }
-    private int getMeasurementId(final int id) {
+    private long getMeasurementId(final long id) {
         return (id/fieldCount)%measurementCount;
     }
 
     /**
-     * Compute the corresponding field name given an integer id.
+     * Compute the corresponding field name given a long integer id.
      * @param id
      * @return Field name
      */
-    private String getFieldName(final int id) {
+    private String getFieldName(final long id) {
         return fieldPrefix + getFieldId(id);
     }
-    private int getFieldId(final int id) {
+    private long getFieldId(final long id) {
         return id%fieldCount;
     }
 
     @Override
     public boolean doInsert(DB db, Object threadstate) {
-        final int id = index.getAndIncrement();
+        final long id = index.getAndIncrement();
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
