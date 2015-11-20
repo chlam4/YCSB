@@ -7,7 +7,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.influxdb.InfluxDB;
@@ -24,8 +23,8 @@ import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 public class InfluxDBClient extends DB {
     private InfluxDB influxDB;
     private int batchSize, batchInterval;
-    private static final Map<String, Boolean> tableCreatedMap = new ConcurrentHashMap<String, Boolean>();
-    private static final Random rand = new Random();
+    private final Map<String, Boolean> tableCreatedMap = new HashMap<String, Boolean>();
+    private final Random rand = new Random();
 
     @Override
     public void init() {
@@ -88,7 +87,7 @@ public class InfluxDBClient extends DB {
      * Create a database table if it doesn't exist.
      * @param table Name of the database table
      */
-    private void createTableIfNotExists(final String table) {
+    private synchronized void createTableIfNotExists(final String table) {
         final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
         if (tableCreated == null || tableCreated != true) {
             influxDB.createDatabase(table);
