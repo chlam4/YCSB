@@ -71,11 +71,12 @@ public class TimeSeriesWorkload extends Workload {
         //
         // loading time stamp generator
         //
-        final long startTime = Long.parseLong(p.getProperty("tsdb.timestamp.start", currTime.toString()));
-        final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "10000"));
+        final Long defaultStartTime = timeUnit.convert(TimeUnit.DAYS.convert(currTime, TimeUnit.MILLISECONDS), TimeUnit.DAYS);
+        final long startTime = Long.parseLong(p.getProperty("tsdb.timestamp.start", defaultStartTime.toString()));
+        final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
         final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
         final Long perStepCount = (long) fieldCount * measurementCount * step / pollingInterval;
-        loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount);
+        loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount < 1 ? 1 : perStepCount);
     }
 
     /**
