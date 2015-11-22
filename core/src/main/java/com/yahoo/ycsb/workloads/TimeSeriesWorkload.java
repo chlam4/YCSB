@@ -28,11 +28,12 @@ public class TimeSeriesWorkload extends Workload {
     private TimeUnit timeUnit;
     private long queryLength;   // in the specified timeUnit
     private String tablePrefix;
-    private int tableCount;
+    private int tableCount, batchCount;
     private String measurementPrefix;
     private int measurementCount;
     private String fieldPrefix;
     private int fieldCount;
+    private long recordCount;
     private static final AtomicLong index = new AtomicLong();
     private static final Random rand = new Random();
 
@@ -43,10 +44,12 @@ public class TimeSeriesWorkload extends Workload {
         //
         tablePrefix = p.getProperty("tsdb.table.prefix", "mydb");
         tableCount = Integer.parseInt(p.getProperty("tsdb.table.count", "1"));
+        batchCount = Integer.parseInt(p.getProperty("tsdb.table.batches", "0"));
         measurementPrefix = p.getProperty("tsdb.measurement.prefix", "measurement");
         measurementCount = Integer.parseInt(p.getProperty("tsdb.measurement.count", "1"));
         fieldPrefix = p.getProperty("tsdb.field.prefix", "field");
         fieldCount = Integer.parseInt(p.getProperty("tsdb.field.count", "1"));
+        recordCount = Integer.parseInt(p.getProperty("recordcount", "10000000"));
         //
         // floating point value generator
         //
@@ -76,6 +79,7 @@ public class TimeSeriesWorkload extends Workload {
         final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
         final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
         final Long perStepCount = (long) fieldCount * measurementCount * step / pollingInterval;
+        System.out.println("PerstepCount:" +perStepCount+" step: "+step );
         loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount < 1 ? 1 : perStepCount);
     }
 
@@ -85,7 +89,14 @@ public class TimeSeriesWorkload extends Workload {
      * @return Table name
      */
     private String getTableName(final long id) {
-        return tablePrefix + (getMeasurementId(id)*fieldCount + getFieldId(id)) % tableCount;
+    	
+    	if (batchCount == 0 ){
+          return tablePrefix + (getMeasurementId(id)*fieldCount + getFieldId(id)) % tableCount;
+    	}
+    	else {
+          long batchSize = recordCount/tableCount;
+    	  return tablePrefix + "_"+id/batchSize+"_"+(getMeasurementId(id)*fieldCount + getFieldId(id)) % batchCount;
+    	}
     }
 
     /**
@@ -115,9 +126,10 @@ public class TimeSeriesWorkload extends Workload {
     @Override
     public boolean doInsert(DB db, Object threadstate) {
         final long id = index.getAndIncrement();
-        final String table = getTableName(id);
+        
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
+        final String table = getTableName(id);
         final DataPointWithMetricID dp = new DataPointWithMetricID(
                 field, loadTimestampGenerator.next(), new FloatByteIterator(floatGenerator.nextFloat()));
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();

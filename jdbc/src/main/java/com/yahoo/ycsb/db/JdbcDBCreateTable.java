@@ -41,7 +41,7 @@ public class JdbcDBCreateTable implements JdbcDBClientConstants {
     System.out.println("  -f   number of fields (default 10).");
   }
   
-  private static void createTable(Properties props, String tablename)
+  public static void createTable(Properties props, String tablename)
   throws SQLException {
     String driver = props.getProperty(DRIVER_CLASS);
     String username = props.getProperty(CONNECTION_USER);
@@ -70,6 +70,11 @@ public class JdbcDBCreateTable implements JdbcDBClientConstants {
       
       sql = new StringBuilder("CREATE TABLE ");
       sql.append(tablename);
+      
+      if( props.getProperty("sql.string") != null){
+    	  sql.append(props.getProperty("sql.string"));
+      }
+      else {
       sql.append(" (KEY VARCHAR PRIMARY KEY");
       
       for (int idx = 0; idx < fieldcount; idx++) {
@@ -78,7 +83,8 @@ public class JdbcDBCreateTable implements JdbcDBClientConstants {
         sql.append(" VARCHAR");
       }
       sql.append(");");
-      
+      }
+      //System.out.println("sql string " + sql.toString());
       stmt.execute(sql.toString());
       
       System.out.println("Table " + tablename + " created..");

@@ -20,12 +20,16 @@ package com.yahoo.ycsb.db;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.ByteIterator;
+import com.yahoo.ycsb.RandomByteIterator;
 import com.yahoo.ycsb.StringByteIterator;
+import com.yahoo.ycsb.tsdb.DataPoint;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A class that wraps a JDBC compliant database to allow it to be interfaced with YCSB.
@@ -47,7 +51,7 @@ import java.util.concurrent.ConcurrentMap;
  * <li><b>db.passwd</b> Password for the connection.</li>
  * </ul>
  *  
- * @author sudipto
+ * @author sudipto, morand
  *
  */
 public class JdbcDBClient extends DB implements JdbcDBClientConstants {
@@ -58,6 +62,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
   private Integer jdbcFetchSize;
   private static final String DEFAULT_PROP = "";
   private ConcurrentMap<StatementType, PreparedStatement> cachedStatements;
+  private static final Map<String, Boolean> tableCreatedMap = new ConcurrentHashMap<String, Boolean>();
   
   /**
    * The statement type for the prepared statements.
@@ -69,7 +74,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
       DELETE(2),
       READ(3),
       UPDATE(4),
-      SCAN(5),
+      SCAN(5)
       ;
       int internalType;
       private Type(int type) {
@@ -251,6 +256,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
     else return stmt;
 	}
 	
+	
 	private PreparedStatement createAndCacheReadStatement(StatementType readType, String key)
 	throws SQLException {
     StringBuilder read = new StringBuilder("SELECT * FROM ");
@@ -424,6 +430,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	    return -1;
 	  }
 	  try {
+		  
 	    int numFields = values.size();
 	    StatementType type = new StatementType(StatementType.Type.INSERT, tableName, numFields, getShardIndexByKey(key));
 	    PreparedStatement insertStatement = cachedStatements.get(type);
@@ -436,13 +443,54 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
         String field = entry.getValue().toString();
         insertStatement.setString(index++, field);
       }
+      System.out.println("InsertStatement: "+ insertStatement.toString());
       int result = insertStatement.executeUpdate();
       if (result == 1) return SUCCESS;
       else return 1;
     } catch (SQLException e) {
       System.err.println("Error in processing insert to table: " + tableName + e);
+      System.exit(1);
       return -1;
     }
+	}
+	
+	
+	public int insert2Keys(String tableName, String key, long key1,
+			HashMap<String, ByteIterator> values) {
+		if (tableName == null) {
+			return -1;
+		}
+		if (key == null) {
+			return -1;
+		}
+
+		int numFields = values.size() + 1;
+		StatementType type = new StatementType(StatementType.Type.INSERT,
+				tableName, numFields, getShardIndexByKey(key + key1));
+		PreparedStatement insertStatement = cachedStatements.get(type);
+		try {
+			if (insertStatement == null) {
+				insertStatement = createAndCacheInsertStatement(type, key);
+			}
+
+			insertStatement.setString(1, key);
+			insertStatement.setLong(2, key1);
+			int index = 3;
+			for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
+				String field = entry.getValue().toString();
+				insertStatement.setString(index++, field);
+			}
+
+			int result = insertStatement.executeUpdate();
+			if (result == 1)
+				return SUCCESS;
+			else
+				return 1;
+		} catch (SQLException e) {
+			System.err.println("Error in processing insert to table: "
+					+ tableName + e);
+			return -1;
+		}
 	}
 
 	@Override
@@ -468,4 +516,68 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
       return -1;
     }
 	}
+	  /**
+     * Create a database table if it doesn't exist.
+     * @param table Name of the database table
+     */
+    private void createTableIfNotExists(final String table) throws SQLException {
+        final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
+        if (tableCreated == null || tableCreated != true) {
+            JdbcDBCreateTable.createTable(getProperties(), table);
+        }
+    }
+    
+	@Override
+    public int insertDatapoints(final String table, final String measurement,
+            TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
+        try {
+			createTableIfNotExists(table);
+		} catch (SQLException e) {
+			System.err.println("Error in createing table: " + table + e);
+		      return -1;
+		}
+       
+      for (final DataPointWithMetricID dp : datapoints) {
+    	  HashMap<String,ByteIterator>  dpMap = new HashMap<String,ByteIterator>();
+		  dpMap.put("value", dp.getValue());
+          insert2Keys(table, dp.getMetricId(), dp.getTimestamp()/1000, dpMap);
+          dpMap.clear();
+       }
+        return 0;
+    }
+/*
+  private HashMap<String, ByteIterator> buildValues(String key) {        
+    HashMap<String,ByteIterator> values = new HashMap<String,ByteIterator>();
+
+    for (String fieldkey : fieldnames) {
+      ByteIterator data;
+      if (dataintegrity) {
+        data = new StringByteIterator(buildDeterministicValue(key, fieldkey));
+      } else {
+        //fill with random data
+        data = new RandomByteIterator(fieldlengthgenerator.nextInt());
+      }
+      values.put(fieldkey,data);
+    }
+    return values;
+  }
+  */
+  /*
+    @Override
+    public int scanDatapoints(final String table, final String key, final String field,
+            final long startTime, final long endTime, final TimeUnit timeUnit,
+            final Vector<DataPoint> result) {
+        createTableIfNotExists(table);
+        final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
+        final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
+        final String qs = String.format(
+                "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
+                key, startTimeInNano, endTimeInNano);
+        final QueryResult queryResult = influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
+        if (rand.nextInt(1000) == 0) {
+            System.out.println(String.format("  Query: %s\n  Result: %s", qs, queryResult.toString()));
+        }
+        return 0;
+    }
+    */
 }
