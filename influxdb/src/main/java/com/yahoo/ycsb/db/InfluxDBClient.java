@@ -118,8 +118,8 @@ public class InfluxDBClient extends DB {
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
                 key, startTimeInNano, endTimeInNano);
         final QueryResult queryResult = influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
-        if (rand.nextInt(1000) == 0) {
-            System.out.println(String.format("  Query: %s\n  Result: %s", qs, queryResult.toString()));
+        if (rand.nextInt(10000) == 0) {
+            System.out.println(String.format("  Query: %s\n  Result (%d): %s", qs, queryResult.getResults().get(0).getSeries().get(0).getValues().size(), queryResult.toString()));
         }
         return 0;
     }
