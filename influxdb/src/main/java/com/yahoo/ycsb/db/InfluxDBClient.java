@@ -88,7 +88,7 @@ public class InfluxDBClient extends DB {
      * Create a database table if it doesn't exist.
      * @param table Name of the database table
      */
-    private void createTableIfNotExists(final String table) {
+    private synchronized void createTableIfNotExists(final String table) {
         final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
         if (tableCreated == null || tableCreated != true) {
             influxDB.createDatabase(table);
