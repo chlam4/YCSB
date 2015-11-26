@@ -542,7 +542,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
     private synchronized void createFileIfNotExists(final String fileName) throws IOException {
     	
         if (!fileCreatedMap.containsKey(fileName)) {
-        	File file = new File("/data/disk10/mysql/"+fileName);
+        	File file = new File("/data/disk10/mysql/textfiles/"+fileName);
         	if (file.exists()) {
         		file.delete();
 				
@@ -621,7 +621,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				
 				try {
 					createTableIfNotExists(tableName);
-                    String loadString = " LOAD DATA LOCAL INFILE '/data/disk10/mysql/"+tableName+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
+                    String loadString = " LOAD DATA LOCAL INFILE '/data/disk10/mysql/textfiles/"+tableName+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
                  	Connection connection = conns.get(0);
 					PreparedStatement preparedStatement = connection
 							.prepareStatement(loadString);

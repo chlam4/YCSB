@@ -49,7 +49,7 @@ public class TimeSeriesWorkload extends Workload {
         measurementCount = Integer.parseInt(p.getProperty("tsdb.measurement.count", "1"));
         fieldPrefix = p.getProperty("tsdb.field.prefix", "field");
         fieldCount = Integer.parseInt(p.getProperty("tsdb.field.count", "1"));
-        recordCount = Integer.parseInt(p.getProperty("recordcount", "10000000"));
+        recordCount = Long.parseLong(p.getProperty("recordcount", "10000000"));
         //
         // floating point value generator
         //
@@ -79,9 +79,6 @@ public class TimeSeriesWorkload extends Workload {
         final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
         final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
         Long perStepCount = (long) fieldCount * measurementCount * step / pollingInterval;
-        //Long perStepCount = (long) fieldCount * measurementCount * pollingInterval / step;
-      //  System.out.println("PerstepCount:" +perStepCount+" fieldCount: "+fieldCount +" step: "+step+" pollingInterval: "+pollingInterval);
-       // perStepCount = (batchCount == 0) ? perStepCount : perStepCount*batchCount;
         System.out.println("PerstepCount:" +perStepCount+" step: "+step );
         loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount < 1 ? 1 : perStepCount);
     }
