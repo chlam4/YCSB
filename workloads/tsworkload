@@ -9,7 +9,7 @@ workload=com.yahoo.ycsb.workloads.TimeSeriesWorkload
 tsdb.field.count=10000000
 
 
-tsdb.timestamp.step=240000
+tsdb.timestamp.step=1000
 tsdb.table.count=4
 tsdb.table.batches=6
 

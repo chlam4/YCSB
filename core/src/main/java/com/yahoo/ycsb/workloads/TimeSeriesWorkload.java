@@ -78,9 +78,9 @@ public class TimeSeriesWorkload extends Workload {
         final long startTime = Long.parseLong(p.getProperty("tsdb.timestamp.start", defaultStartTime.toString()));
         final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
         final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
-        Long perStepCount = (long) fieldCount * measurementCount * step / pollingInterval;
+        final Long perStepCount = ((long) fieldCount * measurementCount * step - 1) / pollingInterval + 1;
         System.out.println("PerstepCount:" +perStepCount+" step: "+step );
-        loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount < 1 ? 1 : perStepCount);
+        loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount);
     }
 
     /**
@@ -134,7 +134,7 @@ public class TimeSeriesWorkload extends Workload {
                 field, loadTimestampGenerator.next(), new FloatByteIterator(floatGenerator.nextFloat()));
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
-        if (db.insertDatapoints(table, measurement, TimeUnit.NANOSECONDS,
+        if (db.insertDatapoints(table, measurement, timeUnit,
                 datapoints) == 0) {
             return true;
         }
