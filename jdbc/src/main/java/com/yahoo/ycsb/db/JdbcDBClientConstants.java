@@ -55,7 +55,7 @@ public interface JdbcDBClientConstants {
   public static final int SUCCESS = 0;
   
   /** The primary key in the user table.*/
-  public static String PRIMARY_KEY = "YCSB_KEY";
+  public static String PRIMARY_KEY = "variable";
   
   /** The field name prefix in the table.*/
   public static String COLUMN_PREFIX = "FIELD";

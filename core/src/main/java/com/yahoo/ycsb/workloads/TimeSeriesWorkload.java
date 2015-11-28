@@ -65,7 +65,7 @@ public class TimeSeriesWorkload extends Workload {
         //
         // query parameters and time stamp generator
         //
-        timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "MILLISECONDS"));
+        timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "SECONDS"));
         queryLength = Long.parseLong(p.getProperty("tsdb.query.length", Long.toString(timeUnit.convert(1, TimeUnit.HOURS))));
         final Long currTime = timeUnit.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // in specified unit
         final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));

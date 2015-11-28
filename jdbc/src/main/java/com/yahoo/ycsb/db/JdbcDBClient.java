@@ -607,40 +607,10 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 			}
 		}
     	
-    	importFiles();
+    	
     }
     
-	public void importFiles() {
-		
-		long t0 = System.currentTimeMillis();
-
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 6; j++) {
-
-				String tableName = "mydb_" + i + "_" + j;
-				
-				try {
-					createTableIfNotExists(tableName);
-                    String loadString = " LOAD DATA LOCAL INFILE '/data/disk10/mysql/textfiles/"+tableName+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
-                 	Connection connection = conns.get(0);
-					PreparedStatement preparedStatement = connection
-							.prepareStatement(loadString);
-					
-					ResultSet resultSet = preparedStatement.executeQuery();
-				
-					
-
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		long t1 = System.currentTimeMillis();
-		long time = (t1-t0)/(1000*60);
-		System.out.println("finished importing data time (minutes): "+String.valueOf(time));
-
-	}
+	
     /*
 	@Override
     public int insertDatapoints(final String table, final String measurement,
@@ -684,12 +654,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
             final long startTime, final long endTime, final TimeUnit timeUnit,
             final Vector<DataPoint> result) {
     	try{
-        createTableIfNotExists(table);
-        final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
-        final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
+       // createTableIfNotExists(table);
+        final long startTimeInNano = TimeUnit.SECONDS.convert(startTime, timeUnit);
+        final long endTimeInNano = TimeUnit.SECONDS.convert(endTime, timeUnit);
         final String qs = String.format(
-                "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
-                key, startTimeInNano, endTimeInNano);
+                "SELECT %s FROM %s WHERE timestanmp >= %d AND timestamp <= %d", "variable",
+                table, startTimeInNano, endTimeInNano);
         StatementType type = new StatementType(StatementType.Type.READ, table, 1, getShardIndexByKey(key));
         PreparedStatement readStatement = cachedStatements.get(type);
         if (readStatement == null) {
