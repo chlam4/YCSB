@@ -3,7 +3,6 @@ package com.yahoo.ycsb.workloads;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -14,7 +13,10 @@ import com.yahoo.ycsb.Workload;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.generator.FixedFloatGenerator;
 import com.yahoo.ycsb.generator.FloatGenerator;
+import com.yahoo.ycsb.generator.IntegerGenerator;
 import com.yahoo.ycsb.generator.RandomFloatGenerator;
+import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
+import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 import com.yahoo.ycsb.tsdb.RandomTimestampGenerator;
@@ -24,6 +26,7 @@ import com.yahoo.ycsb.tsdb.TimestampGenerator;
 public class TimeSeriesWorkload extends Workload {
     private TimestampGenerator loadTimestampGenerator;
     private TimestampGenerator queryTimestampGenerator;
+    private IntegerGenerator queryKeyGenerator;
     private FloatGenerator floatGenerator;
     private TimeUnit timeUnit;
     private long queryLength;   // in the specified timeUnit
@@ -34,7 +37,6 @@ public class TimeSeriesWorkload extends Workload {
     private String fieldPrefix;
     private int fieldCount;
     private static final AtomicLong index = new AtomicLong();
-    private static final Random rand = new Random();
 
     @Override
     public void init(Properties p) throws WorkloadException {
@@ -68,6 +70,13 @@ public class TimeSeriesWorkload extends Workload {
         final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
         final long upperbound = Long.parseLong(p.getProperty("tsdb.query.upperbound", currTime.toString()));
         queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound);
+        final String queryKeyGeneratorName = p.getProperty("tsdb.queryKeyGenerator", "uniform");
+        if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
+            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.queryKeyGenerator.zipfianConstant", "0.99"));
+            queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
+        } else { // default to "Uniform"
+            queryKeyGenerator = new UniformIntegerGenerator(0, measurementCount * fieldCount - 1);
+        }
         //
         // loading time stamp generator
         //
@@ -132,7 +141,7 @@ public class TimeSeriesWorkload extends Workload {
     @Override
     public boolean doTransaction(DB db, Object threadstate) {
         long endTime = queryTimestampGenerator.next();
-        final int id = rand.nextInt(fieldCount * measurementCount);
+        final int id = queryKeyGenerator.nextInt();
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
