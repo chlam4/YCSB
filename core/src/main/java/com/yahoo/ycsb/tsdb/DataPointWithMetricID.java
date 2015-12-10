@@ -19,4 +19,9 @@ public class DataPointWithMetricID extends DataPoint {
     public String getMetricId() {
         return metricId;
     }
+
+    @Override
+    public String toString() {
+        return String.format("Metric: %s, Value: %s, Timestamp: %d", metricId, this.getValue(), this.getTimestamp());
+    }
 }
