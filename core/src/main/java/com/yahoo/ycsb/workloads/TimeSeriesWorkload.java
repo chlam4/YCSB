@@ -52,14 +52,14 @@ public class TimeSeriesWorkload extends Workload {
         //
         // floating point value generator
         //
-        final String floatGeneratorName = p.getProperty("tsdb.floatGenerator", "fixed");
-        if (floatGeneratorName.equals("random")) {
+        final String floatGeneratorName = p.getProperty("tsdb.floatGenerator", "Uniform");
+        if (floatGeneratorName.equals("Fixed")) {
+            final float fixed = Float.parseFloat(p.getProperty("tsdb.floatGenerator.fixed", "1.0"));
+            floatGenerator = new FixedFloatGenerator(fixed);
+        } else {    // default to "Uniform"
             final float lower = Float.parseFloat(p.getProperty("tsdb.floatGenerator.lower", "0.0"));
             final float upper = Float.parseFloat(p.getProperty("tsdb.floatGenerator.upper", "1.0"));
             floatGenerator = new RandomFloatGenerator(lower, upper);
-        } else {
-            final float fixed = Float.parseFloat(p.getProperty("tsdb.floatGenerator.fixed", "1.0"));
-            floatGenerator = new FixedFloatGenerator(fixed);
         }
         //
         // query parameters and time stamp generator
@@ -70,7 +70,7 @@ public class TimeSeriesWorkload extends Workload {
         final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
         final long upperbound = Long.parseLong(p.getProperty("tsdb.query.upperbound", currTime.toString()));
         queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound);
-        final String queryKeyGeneratorName = p.getProperty("tsdb.queryKeyGenerator", "uniform");
+        final String queryKeyGeneratorName = p.getProperty("tsdb.queryKeyGenerator", "Uniform");
         if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
             final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.queryKeyGenerator.zipfianConstant", "0.99"));
             queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
