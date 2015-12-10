@@ -17,6 +17,7 @@ import com.yahoo.ycsb.generator.IntegerGenerator;
 import com.yahoo.ycsb.generator.RandomFloatGenerator;
 import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
+import com.yahoo.ycsb.generator.ZipfianGenerator;
 import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 import com.yahoo.ycsb.tsdb.RandomTimestampGenerator;
@@ -55,10 +56,12 @@ public class TimeSeriesWorkload extends Workload {
         final String floatGeneratorName = p.getProperty("tsdb.floatGenerator", "Uniform");
         if (floatGeneratorName.equals("Fixed")) {
             final float fixed = Float.parseFloat(p.getProperty("tsdb.floatGenerator.fixed", "1.0"));
+            System.out.println(String.format("Generating metric values all as a single fixed value %f.", fixed));
             floatGenerator = new FixedFloatGenerator(fixed);
         } else {    // default to "Uniform"
             final float lower = Float.parseFloat(p.getProperty("tsdb.floatGenerator.lower", "0.0"));
             final float upper = Float.parseFloat(p.getProperty("tsdb.floatGenerator.upper", "1.0"));
+            System.out.println(String.format("Generating metric values uniformly random between %f and %f.", lower, upper));
             floatGenerator = new RandomFloatGenerator(lower, upper);
         }
         //
@@ -70,9 +73,14 @@ public class TimeSeriesWorkload extends Workload {
         final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
         final long upperbound = Long.parseLong(p.getProperty("tsdb.query.upperbound", currTime.toString()));
         queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound);
-        final String queryKeyGeneratorName = p.getProperty("tsdb.queryKeyGenerator", "Uniform");
-        if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
-            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.queryKeyGenerator.zipfianConstant", "0.99"));
+        final String queryKeyGeneratorName = p.getProperty("tsdb.query.keyGenerator", "Uniform");
+        if (queryKeyGeneratorName.equals("Zipfian")) {
+            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", "0.99"));
+            System.out.println(String.format("Generating query keys according to Zipfian distribution with Zipfian constant %f.", zipfianConst));
+            queryKeyGenerator = new ZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
+        } else if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
+            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", "0.99"));
+            System.out.println(String.format("Generating query keys according to ScrambledZipfian distribution with Zipfian constant %f.", zipfianConst));
             queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
         } else { // default to "Uniform"
             queryKeyGenerator = new UniformIntegerGenerator(0, measurementCount * fieldCount - 1);
