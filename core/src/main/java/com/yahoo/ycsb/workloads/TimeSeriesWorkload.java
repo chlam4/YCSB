@@ -88,7 +88,7 @@ public class TimeSeriesWorkload extends Workload {
         //
         // loading time stamp generator
         //
-        final Long defaultStartTime = timeUnit.convert(TimeUnit.DAYS.convert(currTime, TimeUnit.MILLISECONDS), TimeUnit.DAYS);
+        final Long defaultStartTime = currTime;
         final long startTime = Long.parseLong(p.getProperty("tsdb.timestamp.start", defaultStartTime.toString()));
         final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
         final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
