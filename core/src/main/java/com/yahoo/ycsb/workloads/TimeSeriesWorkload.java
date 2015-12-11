@@ -100,7 +100,10 @@ public class TimeSeriesWorkload extends Workload {
         } else { // default to "Realtime"
             final Integer defaultPerStepCount = java.lang.Math.min(1000, measurementCount * fieldCount);
             final int perStepCount = Integer.parseInt(p.getProperty("tsdb.timestamp.perStepCount", defaultPerStepCount.toString()));
+<<<<<<< HEAD
             System.out.println(String.format("Generating timestamps based real time with group size of %d.", perStepCount));
+=======
+>>>>>>> 2dcd0b6ab3a85ea346b08ba145f0c9751e2e962b
             loadTimestampGenerator = new StepTimestampGenerator(perStepCount, timeUnit);
         }
     }
