@@ -21,6 +21,7 @@ import com.yahoo.ycsb.generator.ZipfianGenerator;
 import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 import com.yahoo.ycsb.tsdb.RandomTimestampGenerator;
+import com.yahoo.ycsb.tsdb.RealTimestampGenerator;
 import com.yahoo.ycsb.tsdb.StepTimestampGenerator;
 import com.yahoo.ycsb.tsdb.TimestampGenerator;
 
@@ -88,12 +89,17 @@ public class TimeSeriesWorkload extends Workload {
         //
         // loading time stamp generator
         //
-        final Long defaultStartTime = currTime;
-        final long startTime = Long.parseLong(p.getProperty("tsdb.timestamp.start", defaultStartTime.toString()));
-        final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.timestamp.polling.interval", "240000"));  // 4 minutes
-        final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
-        final Long perStepCount = ((long) fieldCount * measurementCount * step - 1) / pollingInterval + 1;
-        loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount);
+        final String loadTimestampGeneratorName = p.getProperty("tsdb.load.timestamp.generator", "Realtime");
+        if (loadTimestampGeneratorName.equals("Step")) {
+            final Long defaultStartTime = currTime;
+            final long startTime = Long.parseLong(p.getProperty("tsdb.load.timestamp.start", defaultStartTime.toString()));
+            final long pollingInterval = Integer.parseInt(p.getProperty("tsdb.load.timestamp.polling.interval", "240000")); // 4 minutes
+            final int step = Integer.parseInt(p.getProperty("tsdb.load.timestamp.step", "10"));
+            final Long perStepCount = ((long) fieldCount * measurementCount * step - 1) / pollingInterval + 1;
+            loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount);
+        } else { // default to "Realtime"
+            loadTimestampGenerator = new RealTimestampGenerator(timeUnit, java.lang.Math.min(1000, measurementCount * fieldCount));
+        }
     }
 
     /**
