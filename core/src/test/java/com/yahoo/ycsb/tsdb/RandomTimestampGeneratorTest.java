@@ -16,7 +16,7 @@ public class RandomTimestampGeneratorTest {
             for (int j=0; j<10000; j++) {
                 final long ts = tsgen.next();
                 //System.out.println(String.format("floor=%d, ceiling=%d, generated=%d", floor > ceiling ? ceiling : floor, floor > ceiling ? ceiling : ceiling, ts));
-                Assert.assertTrue((ts >= floor && ts < ceiling) || (ts >= ceiling && ts < floor));
+                Assert.assertTrue((ts >= floor && ts <= ceiling) || (ts >= ceiling && ts <= floor));
             }
         }
     }

@@ -6,15 +6,12 @@ import java.util.Random;
  * Generator of random time stamps over a given range.
  */
 public class RandomTimestampGenerator implements TimestampGenerator {
-    private static final Random rand = new Random();
+    private final Random rand = new Random();
     private final long floor;   // inclusive
-    private final long ceiling; // exclusive
+    private final long ceiling; // inclusive
 
     public RandomTimestampGenerator(long floor, long ceiling) {
-        if (floor == ceiling) {
-            this.floor = floor;
-            this.ceiling = floor + 1;   // to avoid DivideByZeroError
-        } else if (floor > ceiling){
+        if (floor > ceiling){
             this.floor = ceiling;
             this.ceiling = floor;
         } else {
@@ -25,6 +22,10 @@ public class RandomTimestampGenerator implements TimestampGenerator {
 
     @Override
     public long next() {
-        return (rand.nextLong() & ~(1 << (Long.SIZE-1))) % (ceiling - floor) + floor;
+        if (floor == ceiling) {
+            return floor;
+        } else {
+            return (rand.nextLong() & ~(1 << (Long.SIZE-1))) % (ceiling + 1 - floor) + floor;
+        }
     }
 }
