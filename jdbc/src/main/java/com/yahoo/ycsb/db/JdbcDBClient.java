@@ -69,6 +69,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
   private ConcurrentMap<StatementType, PreparedStatement> cachedStatements;
   private static final Map<String, Boolean> tableCreatedMap = new ConcurrentHashMap<String, Boolean>();
   private static final Map<String, BufferedWriter> fileCreatedMap = new ConcurrentHashMap<String, BufferedWriter>();
+  ConcurrentMap<Integer, ArrayList<Integer>> metaTable = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
   
   private static final Random rand = new Random();
   /**
@@ -481,7 +482,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				insertStatement = createAndCacheInsertStatement(type, key);
 			}
 
-			insertStatement.setString(1, key);
+			//insertStatement.setString(1, key);
+                        insertStatement.setLong(1, Long.parseLong(key.replaceAll("^field", "")));
 			insertStatement.setLong(2, key1);
 			int index = 3;
 			for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
@@ -555,6 +557,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
         	fileCreatedMap.put(fileName, bw);
         }
     }
+    /*
     @Override
     public int insertDatapoints(final String table, final String measurement,
             TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
@@ -579,6 +582,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
        }
         return 0;
     }
+    */
     
     private void writeTable (String table, String variable, long timeStamp, HashMap<String,ByteIterator> dpMap) throws IOException {
     	BufferedWriter bw = fileCreatedMap.get(table);
@@ -611,7 +615,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
     }
     
 	
-    /*
+    
 	@Override
     public int insertDatapoints(final String table, final String measurement,
             TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
@@ -630,7 +634,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
        }
         return 0;
     }
-    */
+    
 /*
   private HashMap<String, ByteIterator> buildValues(String key) {        
     HashMap<String,ByteIterator> values = new HashMap<String,ByteIterator>();
@@ -653,13 +657,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
     public int scanDatapoints(final String table, final String key, final String field,
             final long startTime, final long endTime, final TimeUnit timeUnit,
             final Vector<DataPoint> result) {
-    	try{
        // createTableIfNotExists(table);
         final long startTimeInNano = TimeUnit.SECONDS.convert(startTime, timeUnit);
         final long endTimeInNano = TimeUnit.SECONDS.convert(endTime, timeUnit);
-        final String qs = String.format(
-                "SELECT %s FROM %s WHERE timestanmp >= %d AND timestamp <= %d", "variable",
-                table, startTimeInNano, endTimeInNano);
+        //System.out.println(table.split("_")[2]+", "+startTimeInNano+", "+endTimeInNano);
+        final String qs = buildSqlString(table.split("_")[2],startTimeInNano, endTimeInNano, field);
+/*
         StatementType type = new StatementType(StatementType.Type.READ, table, 1, getShardIndexByKey(key));
         PreparedStatement readStatement = cachedStatements.get(type);
         if (readStatement == null) {
@@ -667,14 +670,67 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
         }
         readStatement.setString(1, key);
         ResultSet resultSet = readStatement.executeQuery();
-        if (rand.nextInt(1000) == 0) {
+*/
+    	try{
+        PreparedStatement preparedStatement = conns.get(0).prepareStatement(qs);
+                ResultSet resultSet = preparedStatement.executeQuery();
+        if (rand.nextInt(10000) == 0) {
             System.out.println(String.format("  Query: %s\n  Result: %s", qs, resultSet.toString()));
         }
     	} catch (SQLException e) {
+                     System.out.println(qs+", "+startTimeInNano+", "+endTimeInNano);
 			System.err.println("Error in scanDatapoints table: " + table + e);
 		      return -1;
 		}
         return 0;
     }
-    
+
+
+    private String buildSqlString(String group, long startTime,
+        long endTime, String field) {
+        ArrayList<Integer> groupList;
+        String tableName = null;
+        Connection connection = conns.get(0);
+        if (metaTable.isEmpty()) {
+            try {
+                PreparedStatement preparedStatement = connection
+                        .prepareStatement("SELECT * FROM metaTable");
+                ResultSet resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    groupList = new ArrayList<Integer>();
+                    groupList.add(resultSet.getInt(2));
+                    groupList.add(resultSet.getInt(3));
+                    metaTable.put(resultSet.getInt(1), groupList);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        StringBuffer buff = new StringBuffer();
+        for (Integer key : metaTable.keySet()) {
+            if (startTime < metaTable.get(key).get(0)
+                    && startTime >= metaTable.get(key).get(1)) {
+                tableName = "mydb_" + key.intValue() + "_" + group;
+                buff.append("SELECT value FROM " + tableName
+                        + " WHERE variable = '" + field + "' and timestamp >= "
+                        + startTime);
+                if (endTime > metaTable.get(key).get(0)) {
+                    buff.append(" AND timestamp <= "
+                            + metaTable.get(key).get(0));
+                    buff.append(" UNION ALL ");
+                    Integer key2 = key + 1;
+                    tableName = "mydb_" + key2 + "_" + group;
+                    long midStart = metaTable.get(key2).get(1);
+                    buff.append("SELECT value FROM " + tableName
+                            + " WHERE variable = '" + field
+                            + "' and timestamp >= " + midStart);
+                    buff.append(" AND timestamp <= " + endTime);
+                } else {
+                    buff.append(" AND timestamp <= " + endTime);
+                }
+            }
+        }
+        return buff.toString();
+    }
+	       
 }

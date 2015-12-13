@@ -25,6 +25,6 @@ public class RandomTimestampGenerator implements TimestampGenerator {
 
     @Override
     public long next() {
-        return rand.nextLong() % (ceiling - floor) + floor;
+        return Math.abs(rand.nextLong()) % (ceiling - floor) + floor;
     }
 }

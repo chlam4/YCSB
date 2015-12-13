@@ -95,6 +95,8 @@ public class TimeSeriesWorkload extends Workload {
     	}
     	else {
           long batchSize = recordCount/tableCount;
+         
+          //System.out.println(id+", "+recordCount+", "+batchSize+", "+id/batchSize);
     	  return tablePrefix + "_"+id/batchSize+"_"+(getMeasurementId(id)*fieldCount + getFieldId(id)) % batchCount;
     	}
     }
@@ -144,7 +146,9 @@ public class TimeSeriesWorkload extends Workload {
     @Override
     public boolean doTransaction(DB db, Object threadstate) {
         long endTime = queryTimestampGenerator.next();
-        final int id = rand.nextInt(fieldCount * measurementCount);
+        //final int id = rand.nextLong(fieldCount * measurementCount);
+        final long id = (long)(rand.nextDouble()*fieldCount);
+        //System.out.println(fieldCount+", "+id);
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);

@@ -67,30 +67,42 @@ public class JdbcDBImportTables implements JdbcDBClientConstants {
   		
   		long t0 = System.currentTimeMillis();
 
-  		for (int i = 0; i < 1; i++) {
-  			for (int j = 0; j < 6; j++) {
-
-  				String tableName = "mydb_" + i + "_" + j;
-  				
   				try {
-                    JdbcDBCreateTable.createTable(props, tableName);
-                     String loadString = " LOAD DATA LOCAL INFILE '/data/disk10/mysql/textfiles/"+tableName+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
+  	//	for (int i = 0; i < 4; i++) {
+  	//		for (int j = 0; j < 6; j++) {
+
+  	//			String tableName = "mydb_" + i + "_" + j;
+ 				
+                     String tableName = "bigint_test_0_0";
+                   JdbcDBCreateTable.createTable(props, tableName);
+                    //tmt.execute("ALTER TABLE mydb_test_0_0 DISABLE KEYS");
+                 // for (char c = 'a'; c <= 'd'; c++) {
+                   //for (char c1   = 'a'; c1 <= 'z'; c1++) {
+                     String loadString = "LOAD DATA LOCAL INFILE '/data/disk05/textfiles/"+tableName+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
                    PreparedStatement preparedStatement = conn
   							.prepareStatement(loadString);
   					
   					ResultSet resultSet = preparedStatement.executeQuery();
   				
+  		long t1 = System.currentTimeMillis();
+  		long time = (t1-t0)/(1000);
+  		System.out.println(tableName+" finished importing data time (seconds): "+String.valueOf(time));
+               // if (tableName == "adv") break;
+                //}
+                //}
+                //stmt.execute("ALTER TABLE mydb_test_0_0 ENABLE KEYS");
+  	//	long t2 = System.currentTimeMillis();
+  	//	long time = (t2-t0)/(1000);
+  	//	System.out.println(" finished importing data time (seconds): "+String.valueOf(time));
+                
   					
 
   				} catch (SQLException e) {
   					// TODO Auto-generated catch block
   					e.printStackTrace();
   				}
-  			}
-  		}
-  		long t1 = System.currentTimeMillis();
-  		long time = (t1-t0)/(1000*60);
-  		System.out.println("finished importing data time (minutes): "+String.valueOf(time));
+  		//	}
+  		//}
   		
     } catch (ClassNotFoundException e) {
         throw new SQLException("JDBC Driver class not found.");
