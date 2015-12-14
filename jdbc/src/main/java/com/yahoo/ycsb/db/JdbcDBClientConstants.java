@@ -59,4 +59,7 @@ public interface JdbcDBClientConstants {
   
   /** The field name prefix in the table.*/
   public static String COLUMN_PREFIX = "FIELD";
+  
+  /** The bulk load batchsize.*/
+  public static String BATCH_SIZE = "db.batchsize";
 }
