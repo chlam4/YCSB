@@ -75,12 +75,13 @@ public class TimeSeriesWorkload extends Workload {
         final int refreshInterval = Integer.parseInt(p.getProperty("tsdb.query.toTime.refreshInterval", "0"));
         queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound, refreshInterval, timeUnit);
         final String queryKeyGeneratorName = p.getProperty("tsdb.query.keyGenerator", "Uniform");
+        final Double defaultZipfianConst = 0.883;   // achieving the 80-20 percent distribution when number of metrics is 10M
         if (queryKeyGeneratorName.equals("Zipfian")) {
-            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", "0.99"));
+            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", defaultZipfianConst.toString()));
             System.out.println(String.format("Generating query keys according to Zipfian distribution with Zipfian constant %f.", zipfianConst));
             queryKeyGenerator = new ZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
         } else if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
-            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", "0.99"));
+            final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", defaultZipfianConst.toString()));
             System.out.println(String.format("Generating query keys according to ScrambledZipfian distribution with Zipfian constant %f.", zipfianConst));
             queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
         } else { // default to "Uniform"
