@@ -70,9 +70,10 @@ public class TimeSeriesWorkload extends Workload {
         timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "MILLISECONDS"));
         queryLength = Long.parseLong(p.getProperty("tsdb.query.length", Long.toString(timeUnit.convert(1, TimeUnit.HOURS))));
         final Long currTime = timeUnit.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // in specified unit
-        final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
-        final long upperbound = Long.parseLong(p.getProperty("tsdb.query.upperbound", currTime.toString()));
-        queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound);
+        final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.toTime.lb", currTime.toString()));
+        final long upperbound = Long.parseLong(p.getProperty("tsdb.query.toTime.ub", currTime.toString()));
+        final int refreshInterval = Integer.parseInt(p.getProperty("tsdb.query.toTime.refreshInterval", "0"));
+        queryTimestampGenerator = new RandomTimestampGenerator(lowerbound, upperbound, refreshInterval, timeUnit);
         final String queryKeyGeneratorName = p.getProperty("tsdb.query.keyGenerator", "Uniform");
         if (queryKeyGeneratorName.equals("Zipfian")) {
             final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", "0.99"));
@@ -167,5 +168,11 @@ public class TimeSeriesWorkload extends Workload {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void cleanup() {
+        if (loadTimestampGenerator != null) loadTimestampGenerator.cleanup();
+        if (queryTimestampGenerator != null) queryTimestampGenerator.cleanup();
     }
 }

@@ -10,4 +10,9 @@ public interface TimestampGenerator {
      * @return The next time stamp in nanoseconds since epoch.
      */
     public long next();
+
+    /**
+     * Clean up anything needed when the program exits.
+     */
+    public void cleanup();
 }

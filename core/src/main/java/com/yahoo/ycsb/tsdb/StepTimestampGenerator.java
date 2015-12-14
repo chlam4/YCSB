@@ -129,4 +129,9 @@ public class StepTimestampGenerator implements TimestampGenerator {
         return currTimestamp.longValue();
     }
 
+    @Override
+    public void cleanup() {
+        // nothing needs to be cleaned up
+    }
+
 }
