@@ -30,8 +30,8 @@ public class RandomTimestampGenerator implements TimestampGenerator {
             scheduler = Executors.newSingleThreadScheduledExecutor();
             scheduler.scheduleAtFixedRate(new Runnable() {
                 public void run() {
-                    RandomTimestampGenerator.this.floor = floor + refreshInterval;
-                    RandomTimestampGenerator.this.ceiling = ceiling + refreshInterval;
+                    RandomTimestampGenerator.this.ceiling += refreshInterval;
+                    RandomTimestampGenerator.this.floor += refreshInterval;
                 }}, refreshInterval, refreshInterval, timeUnit
             );
         } else {
