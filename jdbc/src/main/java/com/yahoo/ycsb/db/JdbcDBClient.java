@@ -84,8 +84,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	private int batchSize;
 	private boolean done = false;
 	ExecutorService executorService = Executors.newFixedThreadPool(2);
-	BlockingQueue<Entity> blockingQueue = new ArrayBlockingQueue<Entity>(
-			batchSize * 2);
+	BlockingQueue<YcsbEntity> blockingQueue;
 
 	private static final Random rand = new Random();
 
@@ -208,6 +207,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		String passwd = props.getProperty(CONNECTION_PASSWD, DEFAULT_PROP);
 		String driver = props.getProperty(DRIVER_CLASS);
 		batchSize = Integer.parseInt(props.getProperty(BATCH_SIZE, "10000"));
+                blockingQueue = new ArrayBlockingQueue<YcsbEntity>(
+				batchSize * 2);
 
 		String jdbcFetchSizeStr = props.getProperty(JDBC_FETCH_SIZE);
 		if (jdbcFetchSizeStr != null) {
@@ -265,6 +266,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 
 			// invokeAll() blocks until both tasks have completed
 			executorService.execute(new PersisterTask(this, blockingQueue));
+                        System.out.println("Started Thread");
 
 		} catch (Exception e) {
 			System.err.println("Failed to load feed. "
@@ -570,19 +572,21 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		}
 	}
 
-	public int insertBatch(List<Entity> entities) {
+	public int insertBatch(List<YcsbEntity> entities) {
+		Map<String, List<YcsbEntity>> entityMap = new HashMap<String, List<YcsbEntity>>();
 
-		Map<String, List<Entity>> entityMap = new HashMap<String, List<Entity>>();
-
-		for (Entity entity : entities) {
+		for (YcsbEntity entity : entities) {
 			String tableName = entity.tableName;
+                         if (rand.nextInt(99998) == 0) System.out.println("build map:" + entity.toString());
 			if (!entityMap.containsKey(tableName)) {
-				ArrayList<Entity> mapList = new ArrayList<Entity>();
+				ArrayList<YcsbEntity> mapList = new ArrayList<YcsbEntity>();
 				mapList.add(entity);
+                                entityMap.put(tableName, mapList);
 			} else {
 				entityMap.get(tableName).add(entity);
 			}
 		}
+               
 
 		for (String tableName : entityMap.keySet()) {
 			try {
@@ -590,14 +594,19 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 						"INSERT INTO " + tableName
 								+ " (variable, timestamp, value, "
 								+ ") VALUES(?,?,?)");
-				for (Entity e : entityMap.get(tableName)) {
+				for (YcsbEntity e : entityMap.get(tableName)) {
 
+                         if (rand.nextInt(9999) == 0) System.out.println("Insert:" + e.toString());
 					// Add each parameter to the row.
+				        
+       //                 System.out.println("psmt: "+e.toString());
 
 					pstmt.setLong(1,
 							Long.parseLong(e.key.replaceAll("^field", "")));
 					pstmt.setLong(2, e.key1);
 					int index = 3;
+                                        
+                System.out.println(" enttiies in map entties "+e.values);
 					for (Map.Entry<String, ByteIterator> entry : e.values
 							.entrySet()) {
 						String field = entry.getValue().toString();
@@ -607,7 +616,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 					pstmt.addBatch();
 
 				}
-
+                                System.out.println(pstmt.toString());
 				List result = Arrays.asList(pstmt.executeBatch());
 				if (!result.contains(1))
 					continue;
@@ -771,8 +780,9 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		for (final DataPointWithMetricID dp : datapoints) {
 			HashMap<String, ByteIterator> dpMap = new HashMap<String, ByteIterator>();
 			dpMap.put("value", dp.getValue());
-			blockingQueue.add(new Entity(table, dp.getMetricId(), dp
-					.getTimestamp() / 1000, dpMap));
+                        YcsbEntity entity = new YcsbEntity(table, dp.getMetricId(), dp.getTimestamp(), dpMap);
+                         if (rand.nextInt(10000) == 0) System.out.println("Adding:" + entity.toString());
+			blockingQueue.add(entity);
 			// insert2Keys(table, dp.getMetricId(), dp.getTimestamp()/1000,
 			// dpMap);
 			dpMap.clear();
@@ -888,22 +898,26 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 
 	class PersisterTask implements Runnable {
 		JdbcDBClient persister;
-		BlockingQueue queue;
+		BlockingQueue<YcsbEntity> queue;
 
-		PersisterTask(JdbcDBClient persister, BlockingQueue queue) {
+		PersisterTask(JdbcDBClient persister, BlockingQueue<YcsbEntity> queue) {
 			this.persister = persister;
 			this.queue = queue;
 
 		}
 
 		public void run() {
-			List entities = new ArrayList(batchSize);
+			List<YcsbEntity>  entities = new ArrayList<YcsbEntity>(batchSize);
 
 			// "done" is set to false when the parser is done, at which point
 			// all remaining entities will be in the queue.
 			while (!done || !queue.isEmpty()) {
 				try {
-					entities.add(queue.take());
+                                        YcsbEntity e = queue.take();
+                                        
+                                        if (rand.nextInt(9997) == 0) System.out.println("take:" + e.toString());
+					entities.add(e);
+                  
 					if (entities.size() >= batchSize) {
 						persister.insertBatch(entities);
 						entities.clear();
@@ -919,19 +933,27 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		}
 	}
 
-	class Entity {
+	class YcsbEntity {
 		public String tableName;
 		public String key;
 		public long key1;
 		public HashMap<String, ByteIterator> values;
 
-		Entity(String tableName, String key, long key1,
+		YcsbEntity(String tableName, String key, long key1,
 				HashMap<String, ByteIterator> values) {
 			this.tableName = tableName;
 			this.key = key;
 			this.key1 = key1;
 			this.values = values;
 		}
+                public String  toString() {
+	            StringBuffer buff = new StringBuffer(tableName+", "+key+", "+key1+", ");
+	            for (String value : values.keySet()){
+                    buff.append(value+", "+values.get(value));
+	            }
+	            return buff.toString();
+
+	}
 	}
 
 }

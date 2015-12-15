@@ -12,7 +12,7 @@ tsdb.field.count=10000000
 tsdb.timestamp.step=1000
 tsdb.table.count=4
 tsdb.table.batches=6
-tsdb.table.prefix=mydb_test
+tsdb.table.prefix=mydb_bulk
 
 tsdb.query.lowerbound=1448517599
 tsdb.query.upperbound=1448560799

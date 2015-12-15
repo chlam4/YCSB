@@ -2,6 +2,7 @@ package com.yahoo.ycsb.workloads;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.Properties;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,7 @@ public class TimeSeriesWorkload extends Workload {
     private int fieldCount;
     private long recordCount;
     private final AtomicLong index = new AtomicLong();
+    private static final Random rand = new Random();
 
     @Override
     public void init(Properties p) throws WorkloadException {
