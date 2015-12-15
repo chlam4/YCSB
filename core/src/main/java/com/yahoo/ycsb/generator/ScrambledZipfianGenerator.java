@@ -86,9 +86,9 @@ public class ScrambledZipfianGenerator extends IntegerGenerator
 		_itemcount=_max-_min+1;
 		if (_zipfianconstant == USED_ZIPFIAN_CONSTANT) 
 		{
-		    gen=new ZipfianGenerator(0,ITEM_COUNT,_zipfianconstant,ZETAN);
+		    gen=new ZipfianGenerator(0,_itemcount,_zipfianconstant,ZETAN);
 		} else {
-		    gen=new ZipfianGenerator(0,ITEM_COUNT,_zipfianconstant);
+		    gen=new ZipfianGenerator(0,_itemcount,_zipfianconstant);
 		}
 	}
 	
