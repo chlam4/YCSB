@@ -17,6 +17,8 @@
 
 package com.yahoo.ycsb.generator;
 
+import java.util.Arrays;
+
 import com.yahoo.ycsb.Utils;
 
 /**
@@ -36,6 +38,14 @@ public class ScrambledZipfianGenerator extends IntegerGenerator
 	
 	ZipfianGenerator gen;
 	long _min,_max,_itemcount;
+    //
+    // Whether or not to use permutation to implement the scrambling, which is
+	// more accurate than using hashing - the original method in YCSB.
+    // This is at the memory cost of storing the permutation, which could
+    // become impractical when the item count is too large.
+    //
+	boolean usePermutation = false;
+	long[] permutation;
 	
 	/******************************* Constructors **************************************/
 
@@ -86,12 +96,31 @@ public class ScrambledZipfianGenerator extends IntegerGenerator
 		_itemcount=_max-_min+1;
 		if (_zipfianconstant == USED_ZIPFIAN_CONSTANT) 
 		{
-		    gen=new ZipfianGenerator(0,_itemcount,_zipfianconstant,ZETAN);
+		    gen=new ZipfianGenerator(0,_itemcount-1,_zipfianconstant,ZETAN);
 		} else {
-		    gen=new ZipfianGenerator(0,_itemcount,_zipfianconstant);
+		    gen=new ZipfianGenerator(0,_itemcount-1,_zipfianconstant);
 		}
 	}
-	
+
+    /**
+     * Create a zipfian generator for items between min and max (inclusive) for the specified zipfian constant.
+     * @param min The smallest integer to generate in the sequence.
+     * @param max The largest integer to generate in the sequence.
+     * @param _zipfianconstant The zipfian constant to use.
+     * @param usePermutation Whether to use permutation to implement the scrambling
+     */
+    public ScrambledZipfianGenerator(long min, long max, double _zipfianconstant, boolean usePermutation) {
+        this(min, max, _zipfianconstant);
+        if (usePermutation) {
+            System.err.println("Using permutation to implement scrambling in ScrambledZipfianGenerator.");
+            permutation = new long[(int)_itemcount];
+            for (int i=0; i<_itemcount; i++) {
+                final int j = Utils.random().nextInt(i+1);
+                permutation[i] = permutation[j];
+                permutation[j] = i;
+            }
+        }
+    }
 	/**************************************************************************************************/
 	
 	/**
@@ -108,7 +137,11 @@ public class ScrambledZipfianGenerator extends IntegerGenerator
 	public long nextLong()
 	{
 		long ret=gen.nextLong();
-		ret=_min+Utils.FNVhash64(ret)%_itemcount;
+		if (!usePermutation) {
+		    ret=_min+Utils.FNVhash64(ret)%_itemcount;
+		} else {
+		    ret=_min+permutation[(int)ret];
+		}
 		setLastInt((int)ret);
 		return ret;
 	}
@@ -119,12 +152,34 @@ public class ScrambledZipfianGenerator extends IntegerGenerator
 	    System.out.println("zetan: "+newzetan);
 	    System.exit(0);
 
-		ScrambledZipfianGenerator gen=new ScrambledZipfianGenerator(10000);
-		
-		for (int i=0; i<1000000; i++)
+        ScrambledZipfianGenerator gen=new ScrambledZipfianGenerator(10000);
+        
+        for (int i=0; i<1000000; i++)
+        {
+            System.out.println(""+gen.nextInt());
+        }
+        
+	    //
+	    // Code below is to calculate the percentage of generated would fall
+	    // into the top 20%.
+	    //
+	    final int item_count = 10000000;
+		final IntegerGenerator igen=new ScrambledZipfianGenerator(0, item_count-1, 0.883);
+		final int[] freqs = new int[item_count];
+		final int rounds = 1000000000;
+		for (int i=0; i<rounds; i++)
 		{
-			System.out.println(""+gen.nextInt());
+		    freqs[igen.nextInt()]++;
+		    if (i%(rounds/100) == 0) {
+		        System.out.println(String.format("Up to %d rounds", i));
+		    }
 		}
+		int sum = 0;
+		Arrays.sort(freqs);
+		for (int j=item_count-1; j>=item_count*8/10; j--) {
+		    sum += freqs[j];
+		}
+		System.out.println(String.format("20 percent of items are drawn %f of the time.", (double) sum/rounds));
 	}
 
 	/**

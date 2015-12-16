@@ -83,7 +83,7 @@ public class TimeSeriesWorkload extends Workload {
         } else if (queryKeyGeneratorName.equals("ScrambledZipfian")) {
             final double zipfianConst = Double.parseDouble(p.getProperty("tsdb.query.keyGenerator.zipfianConstant", defaultZipfianConst.toString()));
             System.out.println(String.format("Generating query keys according to ScrambledZipfian distribution with Zipfian constant %f.", zipfianConst));
-            queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst);
+            queryKeyGenerator = new ScrambledZipfianGenerator(0, measurementCount * fieldCount - 1, zipfianConst, true);
         } else { // default to "Uniform"
             queryKeyGenerator = new UniformIntegerGenerator(0, measurementCount * fieldCount - 1);
         }
