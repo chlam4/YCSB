@@ -28,7 +28,7 @@ import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +40,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.Statement;
 
 import javax.swing.text.html.parser.Entity;
 
@@ -83,8 +84,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	ConcurrentMap<Integer, ArrayList<Integer>> metaTable = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
 	private int batchSize;
 	private boolean done = false;
-	ExecutorService executorService = Executors.newFixedThreadPool(2);
-	BlockingQueue<YcsbEntity> blockingQueue;
+	ExecutorService executorService = Executors.newFixedThreadPool(6);
+        List<BlockingQueue<YcsbEntity>> blockingQueueList = new ArrayList<BlockingQueue<YcsbEntity>>();
 
 	private static final Random rand = new Random();
 
@@ -207,8 +208,6 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		String passwd = props.getProperty(CONNECTION_PASSWD, DEFAULT_PROP);
 		String driver = props.getProperty(DRIVER_CLASS);
 		batchSize = Integer.parseInt(props.getProperty(BATCH_SIZE, "10000"));
-                blockingQueue = new ArrayBlockingQueue<YcsbEntity>(
-				batchSize * 2);
 
 		String jdbcFetchSizeStr = props.getProperty(JDBC_FETCH_SIZE);
 		if (jdbcFetchSizeStr != null) {
@@ -224,14 +223,16 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		String autoCommitStr = props.getProperty(JDBC_AUTO_COMMIT,
 				Boolean.TRUE.toString());
 		Boolean autoCommit = Boolean.parseBoolean(autoCommitStr);
+                System.out.println("auto commit "+autoCommit);
 
 		try {
 			if (driver != null) {
 				Class.forName(driver);
 			}
 			int shardCount = 0;
-			conns = new ArrayList<Connection>(3);
+			conns = new ArrayList<Connection>(18);
 			for (String url : urls.split(",")) {
+                                for (int i = 0 ; i < 6 ; i++) {
 				System.out.println("Adding shard node URL: " + url);
 				Connection conn = DriverManager
 						.getConnection(url, user, passwd);
@@ -247,6 +248,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 
 				shardCount++;
 				conns.add(conn);
+                           }
 			}
 
 			System.out.println("Using " + shardCount + " shards");
@@ -265,9 +267,17 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		try {
 
 			// invokeAll() blocks until both tasks have completed
-			executorService.execute(new PersisterTask(this, blockingQueue));
-                        System.out.println("Started Thread");
+	           
 
+                   for (int i = 0 ; i < 6; i++){
+                     System.out.println(i);
+		     BlockingQueue<YcsbEntity> blockingQueue = new LinkedBlockingQueue<YcsbEntity>( batchSize * 2);
+				blockingQueueList.add(blockingQueue);
+			
+                     System.out.println(blockingQueue.toString());
+			executorService.execute(new PersisterTask(this, blockingQueue, conns.get(i)));
+                        System.out.println("Started Thread"+ i);
+			}
 		} catch (Exception e) {
 			System.err.println("Failed to load feed. "
 					+ e.getLocalizedMessage());
@@ -572,12 +582,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		}
 	}
 
-	public int insertBatch(List<YcsbEntity> entities) {
+	public int insertBatch(List<YcsbEntity> entities, Connection conn) {
 		Map<String, List<YcsbEntity>> entityMap = new HashMap<String, List<YcsbEntity>>();
 
+               //System.out.println(System.currentTimeMillis()+" entitieis: " + entities.size());
 		for (YcsbEntity entity : entities) {
 			String tableName = entity.tableName;
-                         if (rand.nextInt(99998) == 0) System.out.println("build map:" + entity.toString());
 			if (!entityMap.containsKey(tableName)) {
 				ArrayList<YcsbEntity> mapList = new ArrayList<YcsbEntity>();
 				mapList.add(entity);
@@ -587,16 +597,21 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 			}
 		}
                
-
 		for (String tableName : entityMap.keySet()) {
 			try {
-				PreparedStatement pstmt = conns.get(0).prepareStatement(
+                             Statement stmt = conn.createStatement();
+                             stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+                             stmt.execute("SET UNIQUE_CHECKS = 0");
+                             stmt.execute("SET SESSION tx_isolation='READ-UNCOMMITTED'");
+                             stmt.execute("SET sql_log_bin = 0");
+				PreparedStatement pstmt = conn.prepareStatement(
 						"INSERT INTO " + tableName
-								+ " (variable, timestamp, value, "
+								+ " (variable, timestamp, value "
 								+ ") VALUES(?,?,?)");
+                                int i = 0;
 				for (YcsbEntity e : entityMap.get(tableName)) {
 
-                         if (rand.nextInt(9999) == 0) System.out.println("Insert:" + e.toString());
+                         //if (rand.nextInt(9999) == 0) System.out.println("Insert:" + e.toString());
 					// Add each parameter to the row.
 				        
        //                 System.out.println("psmt: "+e.toString());
@@ -606,18 +621,23 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 					pstmt.setLong(2, e.key1);
 					int index = 3;
                                         
-                System.out.println(" enttiies in map entties "+e.values);
-					for (Map.Entry<String, ByteIterator> entry : e.values
+                //System.out.println(" enttiies in map entties "+e.values);
+                                         pstmt.setFloat(3, Float.parseFloat(e.value.toString()));
+/*					for (Map.Entry<String, ByteIterator> entry : e.values
 							.entrySet()) {
 						String field = entry.getValue().toString();
 						pstmt.setString(index++, field);
 					}
-					// Add row to the batch.
+					*/// Add row to the batch.
 					pstmt.addBatch();
 
+                                  i++;
 				}
-                                System.out.println(pstmt.toString());
+                          //      System.out.println(pstmt.toString());
 				List result = Arrays.asList(pstmt.executeBatch());
+                             //  conn.commit();
+                              
+                //                System.out.println("Batches: " +i);
 				if (!result.contains(1))
 					continue;
 				else
@@ -688,9 +708,10 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	 *            Name of the database table
 	 */
 	private void createTableIfNotExists(final String table) throws SQLException {
-		final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
+		final Boolean tableCreated = tableCreatedMap.containsKey(table);
 		if (tableCreated == null || tableCreated != true) {
 			JdbcDBCreateTable.createTable(getProperties(), table);
+		        tableCreatedMap.putIfAbsent(table, true);
 		}
 	}
 
@@ -777,16 +798,26 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 			return -1;
 		}
 
+                try {
+                int tableNumber = Integer.parseInt(table.split("_")[2]);
 		for (final DataPointWithMetricID dp : datapoints) {
 			HashMap<String, ByteIterator> dpMap = new HashMap<String, ByteIterator>();
 			dpMap.put("value", dp.getValue());
-                        YcsbEntity entity = new YcsbEntity(table, dp.getMetricId(), dp.getTimestamp(), dpMap);
-                         if (rand.nextInt(10000) == 0) System.out.println("Adding:" + entity.toString());
-			blockingQueue.add(entity);
+                        YcsbEntity entity = new YcsbEntity(table, dp.getMetricId(), dp.getTimestamp(), dp.getValue());
+                        blockingQueueList.get(tableNumber).put(entity);
+                        //YcsbEntity e = blockingQueue.take();
+                        //System.out.println("take:" + e.toString());
+                        //}
 			// insert2Keys(table, dp.getMetricId(), dp.getTimestamp()/1000,
 			// dpMap);
 			dpMap.clear();
 		}
+                }
+                catch (InterruptedException e) {
+                                        System.err.println("Failed to load feed." + e.getMessage());
+                                        throw new RuntimeException("Failed to load feed.", e);
+                                }
+
 		return 0;
 	}
 
@@ -899,10 +930,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	class PersisterTask implements Runnable {
 		JdbcDBClient persister;
 		BlockingQueue<YcsbEntity> queue;
+                Connection conn;
 
-		PersisterTask(JdbcDBClient persister, BlockingQueue<YcsbEntity> queue) {
+		PersisterTask(JdbcDBClient persister, BlockingQueue<YcsbEntity> queue, Connection conn) {
 			this.persister = persister;
 			this.queue = queue;
+                        this.conn = conn;
 
 		}
 
@@ -915,11 +948,11 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				try {
                                         YcsbEntity e = queue.take();
                                         
-                                        if (rand.nextInt(9997) == 0) System.out.println("take:" + e.toString());
+                                        //if (rand.nextInt(9997) == 0) System.out.println("take:" + e.toString());
 					entities.add(e);
                   
 					if (entities.size() >= batchSize) {
-						persister.insertBatch(entities);
+						persister.insertBatch(entities, conn);
 						entities.clear();
 					}
 				} catch (InterruptedException e) {
@@ -928,7 +961,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				}
 			}
 			if (!entities.isEmpty()) {
-				persister.insertBatch(entities);
+				persister.insertBatch(entities, conn);
 			}
 		}
 	}
@@ -937,20 +970,21 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		public String tableName;
 		public String key;
 		public long key1;
-		public HashMap<String, ByteIterator> values;
+		public ByteIterator value;
 
-		YcsbEntity(String tableName, String key, long key1,
-				HashMap<String, ByteIterator> values) {
+		YcsbEntity(String tableName, String key, long key1 , ByteIterator value) {
 			this.tableName = tableName;
 			this.key = key;
 			this.key1 = key1;
-			this.values = values;
+			this.value = value;
 		}
                 public String  toString() {
-	            StringBuffer buff = new StringBuffer(tableName+", "+key+", "+key1+", ");
+	            StringBuffer buff = new StringBuffer(tableName+", "+key+", "+key1+", "+value);
+                    /*
 	            for (String value : values.keySet()){
                     buff.append(value+", "+values.get(value));
 	            }
+                    */
 	            return buff.toString();
 
 	}
