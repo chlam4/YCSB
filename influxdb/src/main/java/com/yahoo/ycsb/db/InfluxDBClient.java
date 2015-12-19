@@ -17,6 +17,7 @@ import org.influxdb.dto.QueryResult;
 
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.Status;
 import com.yahoo.ycsb.tsdb.DataPoint;
 import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
@@ -50,37 +51,32 @@ public class InfluxDBClient extends DB {
     }
 
     @Override
-    public int read(String table, String key, Set<String> fields,
+    public Status read(String table, String key, Set<String> fields,
             HashMap<String, ByteIterator> result) {
-        // TODO Auto-generated method stub
-        return 0;
+        return Status.NOT_IMPLEMENTED;
     }
 
     @Override
-    public int scan(String table, String startkey, int recordcount,
+    public Status scan(String table, String startkey, int recordcount,
             Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
-        // TODO Auto-generated method stub
-        return 0;
+        return Status.NOT_IMPLEMENTED;
     }
 
     @Override
-    public int update(String table, String key,
+    public Status update(String table, String key,
             HashMap<String, ByteIterator> values) {
-        // TODO Auto-generated method stub
-        return 0;
+        return Status.NOT_IMPLEMENTED;
     }
 
     @Override
-    public int insert(String table, String key,
+    public Status insert(String table, String key,
             HashMap<String, ByteIterator> values) {
-        // TODO Auto-generated method stub
-        return 0;
+        return Status.NOT_IMPLEMENTED;
     }
 
     @Override
-    public int delete(String table, String key) {
-        // TODO Auto-generated method stub
-        return 0;
+    public Status delete(String table, String key) {
+        return Status.NOT_IMPLEMENTED;
     }
 
     /**
@@ -88,14 +84,14 @@ public class InfluxDBClient extends DB {
      * @param table Name of the database table
      */
     private synchronized void createTableIfNotExists(final String table) {
-        final Boolean tableCreated = tableCreatedMap.putIfAbsent(table, true);
+        final Boolean tableCreated = tableCreatedMap.put(table, true);
         if (tableCreated == null || tableCreated != true) {
             influxDB.createDatabase(table);
         }
     }
 
     @Override
-    public int insertDatapoints(final String table, final String measurement,
+    public Status insertDatapoints(final String table, final String measurement,
             TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
         createTableIfNotExists(table);
         for (final DataPointWithMetricID dp : datapoints) {
@@ -104,11 +100,11 @@ public class InfluxDBClient extends DB {
                     .field(dp.getMetricId(), dp.getValue()).build();
             influxDB.write(table, "default", p);
         }
-        return 0;
+        return Status.OK;
     }
 
     @Override
-    public int scanDatapoints(final String table, final String key, final String field,
+    public Status scanDatapoints(final String table, final String key, final String field,
             final long startTime, final long endTime, final TimeUnit timeUnit,
             final Vector<DataPoint> result) {
         createTableIfNotExists(table);
@@ -121,6 +117,6 @@ public class InfluxDBClient extends DB {
         if (rand.nextInt(10000) == 0) {
             System.out.println(String.format("  Query: %s\n  Result (%d): %s", qs, queryResult.getResults().get(0).getSeries().get(0).getValues().size(), queryResult.toString()));
         }
-        return 0;
+        return Status.OK;
     }
 }

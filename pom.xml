@@ -21,7 +21,7 @@ LICENSE file.
 
   <groupId>com.yahoo.ycsb</groupId>
   <artifactId>root</artifactId>
-  <version>0.5.0-SNAPSHOT</version>
+  <version>0.6.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>YCSB Root</name>
@@ -78,13 +78,14 @@ LICENSE file.
     <cassandra2.cql.version>2.1.8</cassandra2.cql.version>
     <gemfire.version>8.1.0</gemfire.version>
     <infinispan.version>7.2.2.Final</infinispan.version>
-    <kudu.version>0.5.0</kudu.version>
+    <kudu.version>0.6.0</kudu.version>
     <openjpa.jdbc.version>2.1.1</openjpa.jdbc.version>
     <!--<mapkeeper.version>1.0</mapkeeper.version>-->
     <mongodb.version>3.0.3</mongodb.version>
     <mongodb.async.version>2.0.1</mongodb.async.version>
     <orientdb.version>1.0.1</orientdb.version>
     <redis.version>2.0.0</redis.version>
+    <s3.version>1.10.20</s3.version>
     <voldemort.version>0.81</voldemort.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <thrift.version>0.8.0</thrift.version>
@@ -108,6 +109,7 @@ LICENSE file.
     <module>dynamodb</module>
     <module>elasticsearch</module>
     <module>gemfire</module>
+    <module>googledatastore</module>
     <module>hbase094</module>
     <module>hbase098</module>
     <module>hbase10</module>
@@ -117,10 +119,12 @@ LICENSE file.
     <module>jdbc</module>
     <module>kudu</module>
     <!--<module>mapkeeper</module>-->
+    <module>memcached</module>
     <module>mongodb</module>
     <!--module>nosqldb</module-->
     <module>orientdb</module>
     <module>redis</module>
+    <module>s3</module>
     <module>tarantool</module>
     <!--<module>voldemort</module>-->
   </modules>
@@ -132,8 +136,8 @@ LICENSE file.
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.3</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.7</source>
+          <target>1.7</target>
         </configuration>
       </plugin>
       <plugin>

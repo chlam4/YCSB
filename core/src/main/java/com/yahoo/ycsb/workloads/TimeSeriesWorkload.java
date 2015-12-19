@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.FloatByteIterator;
+import com.yahoo.ycsb.Status;
 import com.yahoo.ycsb.Workload;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.generator.FixedFloatGenerator;
@@ -151,7 +152,7 @@ public class TimeSeriesWorkload extends Workload {
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
         if (db.insertDatapoints(table, measurement, timeUnit,
-                datapoints) == 0) {
+                datapoints) == Status.OK) {
             return true;
         }
         return false;
@@ -165,7 +166,7 @@ public class TimeSeriesWorkload extends Workload {
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
         if (db.scanDatapoints(table, measurement, field, endTime-queryLength, endTime,
-                timeUnit, new Vector<DataPoint>()) == 0) {
+                timeUnit, new Vector<DataPoint>()) == Status.OK) {
             return true;
         }
         return false;

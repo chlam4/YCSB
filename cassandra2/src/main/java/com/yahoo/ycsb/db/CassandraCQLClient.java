@@ -35,6 +35,7 @@ import com.yahoo.ycsb.ByteArrayByteIterator;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.Status;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -58,10 +59,6 @@ public class CassandraCQLClient extends DB {
   private static ConsistencyLevel readConsistencyLevel = ConsistencyLevel.ONE;
   private static ConsistencyLevel writeConsistencyLevel = ConsistencyLevel.ONE;
 
-  public static final int OK = 0;
-  public static final int ERR = -1;
-  public static final int NOT_FOUND = -3;
-
   public static final String YCSB_KEY = "y_id";
   public static final String KEYSPACE_PROPERTY = "cassandra.keyspace";
   public static final String KEYSPACE_PROPERTY_DEFAULT = "ycsb";
@@ -70,6 +67,7 @@ public class CassandraCQLClient extends DB {
 
   public static final String HOSTS_PROPERTY = "hosts";
   public static final String PORT_PROPERTY = "port";
+  public static final String PORT_PROPERTY_DEFAULT = "9042";
 
   public static final String READ_CONSISTENCY_LEVEL_PROPERTY =
       "cassandra.readconsistencylevel";
@@ -77,6 +75,15 @@ public class CassandraCQLClient extends DB {
   public static final String WRITE_CONSISTENCY_LEVEL_PROPERTY =
       "cassandra.writeconsistencylevel";
   public static final String WRITE_CONSISTENCY_LEVEL_PROPERTY_DEFAULT = "ONE";
+
+  public static final String MAX_CONNECTIONS_PROPERTY =
+      "cassandra.maxconnections";
+  public static final String CORE_CONNECTIONS_PROPERTY =
+      "cassandra.coreconnections";
+  public static final String CONNECT_TIMEOUT_MILLIS_PROPERTY =
+      "cassandra.connecttimeoutmillis";
+  public static final String READ_TIMEOUT_MILLIS_PROPERTY =
+      "cassandra.readtimeoutmillis";
 
   /**
    * Count the number of times initialized to teardown on the last
@@ -117,12 +124,7 @@ public class CassandraCQLClient extends DB {
               HOSTS_PROPERTY));
         }
         String[] hosts = host.split(",");
-        String port = getProperties().getProperty("port", "9042");
-        if (port == null) {
-          throw new DBException(String.format(
-              "Required property \"%s\" missing for CassandraCQLClient",
-              PORT_PROPERTY));
-        }
+        String port = getProperties().getProperty(PORT_PROPERTY, PORT_PROPERTY_DEFAULT);
 
         String username = getProperties().getProperty(USERNAME_PROPERTY);
         String password = getProperties().getProperty(PASSWORD_PROPERTY);
@@ -137,7 +139,6 @@ public class CassandraCQLClient extends DB {
             getProperties().getProperty(WRITE_CONSISTENCY_LEVEL_PROPERTY,
                 WRITE_CONSISTENCY_LEVEL_PROPERTY_DEFAULT));
 
-        // public void connect(String node) {}
         if ((username != null) && !username.isEmpty()) {
           cluster = Cluster.builder().withCredentials(username, password)
               .withPort(Integer.valueOf(port)).addContactPoints(hosts).build();
@@ -146,18 +147,35 @@ public class CassandraCQLClient extends DB {
               .addContactPoints(hosts).build();
         }
 
-        // Update number of connections based on threads
-        int threadcount =
-            Integer.parseInt(getProperties().getProperty("threadcount", "1"));
-        cluster.getConfiguration().getPoolingOptions()
-            .setMaxConnectionsPerHost(HostDistance.LOCAL, threadcount);
+        String maxConnections = getProperties().getProperty(
+            MAX_CONNECTIONS_PROPERTY);
+        if (maxConnections != null) {
+          cluster.getConfiguration().getPoolingOptions()
+              .setMaxConnectionsPerHost(HostDistance.LOCAL,
+              Integer.valueOf(maxConnections));
+        }
 
-        // Set connection timeout 3min (default is 5s)
-        cluster.getConfiguration().getSocketOptions()
-            .setConnectTimeoutMillis(3 * 60 * 1000);
-        // Set read (execute) timeout 3min (default is 12s)
-        cluster.getConfiguration().getSocketOptions()
-            .setReadTimeoutMillis(3 * 60 * 1000);
+        String coreConnections = getProperties().getProperty(
+            CORE_CONNECTIONS_PROPERTY);
+        if (coreConnections != null) {
+          cluster.getConfiguration().getPoolingOptions()
+              .setCoreConnectionsPerHost(HostDistance.LOCAL,
+              Integer.valueOf(coreConnections));
+        }
+
+        String connectTimoutMillis = getProperties().getProperty(
+            CONNECT_TIMEOUT_MILLIS_PROPERTY);
+        if (connectTimoutMillis != null) {
+          cluster.getConfiguration().getSocketOptions()
+              .setConnectTimeoutMillis(Integer.valueOf(connectTimoutMillis));
+        }
+
+        String readTimoutMillis = getProperties().getProperty(
+            READ_TIMEOUT_MILLIS_PROPERTY);
+        if (readTimoutMillis != null) {
+          cluster.getConfiguration().getSocketOptions()
+              .setReadTimeoutMillis(Integer.valueOf(readTimoutMillis));
+        }
 
         Metadata metadata = cluster.getMetadata();
         System.err.printf("Connected to cluster: %s\n",
@@ -214,7 +232,7 @@ public class CassandraCQLClient extends DB {
    * @return Zero on success, a non-zero error code on error
    */
   @Override
-  public int read(String table, String key, Set<String> fields,
+  public Status read(String table, String key, Set<String> fields,
       HashMap<String, ByteIterator> result) {
     try {
       Statement stmt;
@@ -240,7 +258,7 @@ public class CassandraCQLClient extends DB {
       ResultSet rs = session.execute(stmt);
 
       if (rs.isExhausted()) {
-        return NOT_FOUND;
+        return Status.NOT_FOUND;
       }
 
       // Should be only 1 row
@@ -256,12 +274,12 @@ public class CassandraCQLClient extends DB {
         }
       }
 
-      return OK;
+      return Status.OK;
 
     } catch (Exception e) {
       e.printStackTrace();
       System.out.println("Error reading key: " + key);
-      return ERR;
+      return Status.ERROR;
     }
 
   }
@@ -287,7 +305,7 @@ public class CassandraCQLClient extends DB {
    * @return Zero on success, a non-zero error code on error
    */
   @Override
-  public int scan(String table, String startkey, int recordcount,
+  public Status scan(String table, String startkey, int recordcount,
       Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
 
     try {
@@ -347,12 +365,12 @@ public class CassandraCQLClient extends DB {
         result.add(tuple);
       }
 
-      return OK;
+      return Status.OK;
 
     } catch (Exception e) {
       e.printStackTrace();
       System.out.println("Error scanning with startkey: " + startkey);
-      return ERR;
+      return Status.ERROR;
     }
 
   }
@@ -371,7 +389,7 @@ public class CassandraCQLClient extends DB {
    * @return Zero on success, a non-zero error code on error
    */
   @Override
-  public int update(String table, String key,
+  public Status update(String table, String key,
       HashMap<String, ByteIterator> values) {
     // Insert and updates provide the same functionality
     return insert(table, key, values);
@@ -391,7 +409,7 @@ public class CassandraCQLClient extends DB {
    * @return Zero on success, a non-zero error code on error
    */
   @Override
-  public int insert(String table, String key,
+  public Status insert(String table, String key,
       HashMap<String, ByteIterator> values) {
 
     try {
@@ -417,12 +435,12 @@ public class CassandraCQLClient extends DB {
 
       ResultSet rs = session.execute(insertStmt);
 
-      return OK;
+      return Status.OK;
     } catch (Exception e) {
       e.printStackTrace();
     }
 
-    return ERR;
+    return Status.ERROR;
   }
 
   /**
@@ -435,7 +453,7 @@ public class CassandraCQLClient extends DB {
    * @return Zero on success, a non-zero error code on error
    */
   @Override
-  public int delete(String table, String key) {
+  public Status delete(String table, String key) {
 
     try {
       Statement stmt;
@@ -450,13 +468,13 @@ public class CassandraCQLClient extends DB {
 
       ResultSet rs = session.execute(stmt);
 
-      return OK;
+      return Status.OK;
     } catch (Exception e) {
       e.printStackTrace();
       System.out.println("Error deleting key: " + key);
     }
 
-    return ERR;
+    return Status.ERROR;
   }
 
 }
