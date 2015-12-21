@@ -19,12 +19,15 @@ package com.yahoo.ycsb;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
 import com.yahoo.ycsb.measurements.Measurements;
+import com.yahoo.ycsb.tsdb.DataPoint;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
  * Wrapper around a "real" DB that measures latencies and counts return codes.
@@ -228,5 +231,32 @@ public class DBWrapper extends DB
     measure("DELETE", res, ist, st, en);
     _measurements.reportStatus("DELETE", res);
     return res;
+  }
+
+  @Override
+  public Status insertDatapoints(String table, String key,
+          java.util.concurrent.TimeUnit timeUnit,
+          List<DataPointWithMetricID> datapoints) {
+      long ist=_measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res=_db.insertDatapoints(table, key, timeUnit, datapoints);
+      long en=System.nanoTime();
+      measure("INSERTDATAPOINTS", res, ist, st, en);
+      _measurements.reportStatus("INSERTDATAPOINTS",res);
+      return res;
+  }
+
+  @Override
+  public Status scanDatapoints(String table, String key, String field,
+          long startTime, long endTime,
+          java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+      long ist=_measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res=_db.scanDatapoints(table, key, field, startTime, endTime,
+              timeUnit, result);
+      long en=System.nanoTime();
+      measure("SCANDATAPOINTS", res, ist, st, en);
+      _measurements.reportStatus("SCANDATAPOINTS",res);
+      return res;
   }
 }

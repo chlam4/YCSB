@@ -18,12 +18,16 @@
 package com.yahoo.ycsb;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Enumeration;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
+
+import com.yahoo.ycsb.tsdb.DataPoint;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 
 /**
@@ -248,6 +252,31 @@ public class BasicDB extends DB
 		return Status.OK;
 	}
 
+    @Override
+    public Status insertDatapoints(final String table, final String measurement,
+            TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
+        delay();
+
+        if (verbose)
+        {
+            System.out.println("INSERT datapoints "+table+" "+measurement+" "+datapoints);
+        }
+
+        return Status.OK;
+    }
+
+    @Override
+    public Status scanDatapoints(final String table, final String key, final String field,
+            final long startTime, final long endTime, final TimeUnit timeUnit,
+            final Vector<DataPoint> result) {
+        delay();
+
+        if (verbose)
+        {
+            System.out.println("SCAN datapoints "+table+" "+key+" "+field+" from "+startTime+" to "+endTime);
+        }
+        return Status.OK;
+    }
 	/**
 	 * Short test of BasicDB
 	 */

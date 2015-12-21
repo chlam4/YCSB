@@ -208,7 +208,7 @@ public class ZipfianGenerator extends IntegerGenerator
 		double sum=initialsum;
 		for (long i=st; i<n; i++)
 		{
-
+		    //System.out.println(String.format("st: %d, n: %d, theta: %f, initialsum: %f, i: %d", st, n, theta, initialsum, i));
 			sum+=1/(Math.pow(i+1,theta));
 		}
 		
@@ -263,7 +263,7 @@ public class ZipfianGenerator extends IntegerGenerator
 					//the zeta sequence terms for the items that went away. This would be faster than recomputing from scratch when the number of items
 					//decreases
 					
-					System.err.println("WARNING: Recomputing Zipfian distribtion. This is slow and should be avoided. (itemcount="+itemcount+" countforzeta="+countforzeta+")");
+					System.err.println("WARNING: Recomputing Zipfian distribution. This is slow and should be avoided. (itemcount="+itemcount+" countforzeta="+countforzeta+")");
 					
 					zetan=zeta(itemcount,theta);
 					eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);

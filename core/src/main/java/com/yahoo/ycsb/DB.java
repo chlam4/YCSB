@@ -18,9 +18,13 @@
 package com.yahoo.ycsb;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+
+import com.yahoo.ycsb.tsdb.DataPoint;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 
 /**
  * A layer for accessing a database to be benchmarked. Each thread in the client
@@ -134,4 +138,37 @@ public abstract class DB
 	 * @return The result of the operation.
 	 */
 	public abstract Status delete(String table, String key);
+
+    /**
+     * Insert the given time series data points to the database.
+     * @param table The name of the table/database
+     * @param key The name of the key (or measurement)
+     * @param timeUnit Time unit
+     * @param datapoints Data points to be inserted
+     * @return The result of the operation.
+     */
+    public Status insertDatapoints(String table, String key,
+            java.util.concurrent.TimeUnit timeUnit,
+            List<DataPointWithMetricID> datapoints) {
+        return Status.NOT_IMPLEMENTED;
+    }
+
+    /**
+     * Perform a query on the given metric (key/field) over a period of time.
+     * @param table The name of the table
+     * @param key The name of the key (or measurement)
+     * @param field The name of the field (or metric)
+     * @param startTime The starting time
+     * @param endTime The ending time
+     * @param timeUnit Time unit
+     * @param result The query result
+     * @return The result of the operation.
+     */
+    public Status scanDatapoints(String table, String key, String field,
+            long startTime, long endTime,
+            java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+        return Status.NOT_IMPLEMENTED;
+    }
+    // TODO: Define an interface for retrieving multiple metrics
+    // TODO: Define an interface for temporal aggregation
 }
