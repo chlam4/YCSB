@@ -72,7 +72,7 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   private static final int BLOCK_SIZE_DEFAULT = 4096;
   private static final List<String> COLUMN_NAMES = new ArrayList<String>();
   private static KuduClient client;
-  private static Schema schema;
+  private static Schema schema, tsSchema;
   private static int fieldCount;
   private boolean debug = false;
   private boolean printErrors = false;
@@ -176,6 +176,32 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
         throw new DBException("Couldn't create the table", e);
       }
     }
+
+    // create schema and tables for time-series workload
+    final List<ColumnSchema> tsColumns = new ArrayList<ColumnSchema>(3);
+    final ColumnSchema metricId = new ColumnSchema.ColumnSchemaBuilder("metric", org.kududb.Type.INT64)
+        .key(true).desiredBlockSize(blockSize).build();
+    final ColumnSchema timestamp = new ColumnSchema.ColumnSchemaBuilder("event_time", org.kududb.Type.TIMESTAMP)
+        .key(true).desiredBlockSize(blockSize).build();
+    final ColumnSchema value = new ColumnSchema.ColumnSchemaBuilder("value", org.kududb.Type.FLOAT)
+        .desiredBlockSize(blockSize).build();
+    tsColumns.add(metricId);
+    tsColumns.add(timestamp);
+    tsColumns.add(value);
+    tsSchema = new Schema(tsColumns);
+
+    final String tablePrefix = prop.getProperty("tsdb.table.prefix", "mydb");
+    final int tableCount = Integer.parseInt(prop.getProperty("tsdb.table.count", "1"));
+    for (int i=0; i<tableCount; i++) {
+      try {
+        client.createTable(tablePrefix+i, tsSchema, builder);
+      } catch (Exception e) {
+        if (!e.getMessage().contains("ALREADY_PRESENT")) {
+          throw new DBException("Couldn't create the table", e);
+        }
+      }
+    }
+    
   }
 
   private static int getIntFromProp(Properties prop, String propName,
