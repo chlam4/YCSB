@@ -84,6 +84,7 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   private KuduSession session;
   private KuduTable kuduTable;
   // Definition of a schema to test time-series workload
+  private static enum TimeSeriesSchema {metric, event_time, value};
   private static final String TS_SCHEMA_METRIC = "metric";
   private static final String TS_SCHEMA_EVENTTIME = "event_time";
   private static final String TS_SCHEMA_VALUE = "value";
@@ -209,13 +210,13 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
     }
 
     // create schema and tables for time-series workload
-    final List<ColumnSchema> tsColumns = new ArrayList<ColumnSchema>(3);
-    final ColumnSchema metricId = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_METRIC, org.kududb.Type.INT64)
-        .key(true).desiredBlockSize(blockSize).build();
-    final ColumnSchema timestamp = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_EVENTTIME, org.kududb.Type.TIMESTAMP)
-        .key(true).desiredBlockSize(blockSize).build();
-    final ColumnSchema value = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_VALUE, org.kududb.Type.FLOAT)
-        .desiredBlockSize(blockSize).build();
+    final List<ColumnSchema> tsColumns = new ArrayList<ColumnSchema>(TimeSeriesSchema.values().length);
+    final ColumnSchema metricId = new ColumnSchema.ColumnSchemaBuilder(
+        TimeSeriesSchema.metric.name(), org.kududb.Type.INT64).key(true).desiredBlockSize(blockSize).build();
+    final ColumnSchema timestamp = new ColumnSchema.ColumnSchemaBuilder(TimeSeriesSchema.event_time.name(),
+        org.kududb.Type.TIMESTAMP).key(true).desiredBlockSize(blockSize).build();
+    final ColumnSchema value = new ColumnSchema.ColumnSchemaBuilder(
+        TimeSeriesSchema.value.name(), org.kududb.Type.FLOAT).desiredBlockSize(blockSize).build();
     tsColumns.add(metricId);
     tsColumns.add(timestamp);
     tsColumns.add(value);
@@ -429,21 +430,23 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
     try {
       final KuduTable kt = client.openTable(table);
       KuduScanner.KuduScannerBuilder scannerBuilder = client.newScannerBuilder(kt);
-      scannerBuilder.setProjectedColumnNames(java.util.Arrays.asList(TS_SCHEMA_EVENTTIME, TS_SCHEMA_VALUE));
+      scannerBuilder.setProjectedColumnNames(java.util.Arrays.asList(
+          TimeSeriesSchema.event_time.name(), TimeSeriesSchema.value.name()));
 
       //
-      // Setting appropriate lower/upper bounds to get for the given metric id only
+      // Setting appropriate lower/upper bounds to get data for the given metric id only
       //
       final PartialRow lowerBound = tsSchema.newPartialRow();
-      lowerBound.addLong(0, metricId);
+      lowerBound.addLong(TimeSeriesSchema.metric.ordinal(), metricId);
       scannerBuilder.lowerBound(lowerBound);
       final PartialRow upperBound = tsSchema.newPartialRow();
-      upperBound.addLong(0, metricId+1);
+      upperBound.addLong(TimeSeriesSchema.metric.ordinal(), metricId+1);
       scannerBuilder.exclusiveUpperBound(upperBound);
       //
       // Setting column range filter for the desired time range
       //
-      final ColumnRangePredicate rangePredicate = new ColumnRangePredicate(tsSchema.getColumnByIndex(1));
+      final ColumnSchema timeColumnSchema = tsSchema.getColumnByIndex(TimeSeriesSchema.event_time.ordinal());
+      final ColumnRangePredicate rangePredicate = new ColumnRangePredicate(timeColumnSchema);
       rangePredicate.setLowerBound(startTime);
       rangePredicate.setUpperBound(endTime);
       scannerBuilder.addColumnRangePredicate(rangePredicate);
@@ -474,8 +477,8 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       return;
     }
     for (final RowResult row : it) {
-      final long ts = row.getLong(1);
-      final float v = row.getFloat(2);
+      final long ts = row.getLong(TimeSeriesSchema.event_time.ordinal());
+      final float v = row.getFloat(TimeSeriesSchema.value.ordinal());
       result.add(new DataPoint(ts, v));
     }
   }
