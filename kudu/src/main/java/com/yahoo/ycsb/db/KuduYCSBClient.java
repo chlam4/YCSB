@@ -430,17 +430,19 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
     try {
       final KuduTable kt = client.openTable(table);
       KuduScanner.KuduScannerBuilder scannerBuilder = client.newScannerBuilder(kt);
-      scannerBuilder.setProjectedColumnNames(java.util.Arrays.asList(
-          TimeSeriesSchema.event_time.name(), TimeSeriesSchema.value.name()));
+//      scannerBuilder.setProjectedColumnNames(java.util.Arrays.asList(
+//          TimeSeriesSchema.event_time.name(), TimeSeriesSchema.value.name()));
 
       //
       // Setting appropriate lower/upper bounds to get data for the given metric id only
       //
       final PartialRow lowerBound = tsSchema.newPartialRow();
       lowerBound.addLong(TimeSeriesSchema.metric.ordinal(), metricId);
+      lowerBound.addLong(TimeSeriesSchema.event_time.ordinal(), startTime);
       scannerBuilder.lowerBound(lowerBound);
       final PartialRow upperBound = tsSchema.newPartialRow();
-      upperBound.addLong(TimeSeriesSchema.metric.ordinal(), metricId+1);
+      upperBound.addLong(TimeSeriesSchema.metric.ordinal(), metricId);
+      upperBound.addLong(TimeSeriesSchema.event_time.ordinal(), endTime);
       scannerBuilder.exclusiveUpperBound(upperBound);
       //
       // Setting column range filter for the desired time range
@@ -458,6 +460,9 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       }
       RowResultIterator closer = scanner.close();
       addAllRowsToDataPointResult(closer, result);
+      if (debug) {
+        System.out.println("Query result: " + result);
+      }
     } catch (TimeoutException te) {
       if (printErrors) {
         System.err.println("Waited too long while scanning datapoints on metricId=" +

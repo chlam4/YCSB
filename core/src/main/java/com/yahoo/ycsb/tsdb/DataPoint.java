@@ -41,4 +41,9 @@ public class DataPoint {
     public ByteIterator getValueAsByteIterator() {
         return new FloatByteIterator(value);
     }
+
+    @Override
+    public String toString() {
+        return String.format("timestamp=%d, value=%f", timestamp, value);
+    }
 }
