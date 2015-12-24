@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.yahoo.ycsb.DB;
-import com.yahoo.ycsb.FloatByteIterator;
 import com.yahoo.ycsb.Status;
 import com.yahoo.ycsb.Workload;
 import com.yahoo.ycsb.WorkloadException;
@@ -148,7 +147,7 @@ public class TimeSeriesWorkload extends Workload {
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
         final DataPointWithMetricID dp = new DataPointWithMetricID(id,
-                field, loadTimestampGenerator.next(), new FloatByteIterator(floatGenerator.nextFloat()));
+                field, loadTimestampGenerator.next(), floatGenerator.nextFloat());
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
         if (db.insertDatapoints(table, measurement, timeUnit,

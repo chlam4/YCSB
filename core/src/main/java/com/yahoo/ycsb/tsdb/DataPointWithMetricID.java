@@ -1,6 +1,5 @@
 package com.yahoo.ycsb.tsdb;
 
-import com.yahoo.ycsb.ByteIterator;
 
 /**
  * A data point representation which consists of the metric id, the timestamp
@@ -12,7 +11,7 @@ public class DataPointWithMetricID extends DataPoint {
     private final long metricId;
     private final String metricName;
     
-    public DataPointWithMetricID(final long metricId, final String metricName, long timestamp, ByteIterator value) {
+    public DataPointWithMetricID(final long metricId, final String metricName, long timestamp, float value) {
         super(timestamp, value);
         this.metricId = metricId;
         this.metricName = metricName;
@@ -28,6 +27,6 @@ public class DataPointWithMetricID extends DataPoint {
 
     @Override
     public String toString() {
-        return String.format("Metric: %s, Value: %s, Timestamp: %d", metricId, this.getValue(), this.getTimestamp());
+        return String.format("Metric: %s, Value: %f, Timestamp: %d", metricId, this.getValue(), this.getTimestamp());
     }
 }

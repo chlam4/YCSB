@@ -394,7 +394,7 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
         final PartialRow row = insert.getRow();
         row.addLong(TS_SCHEMA_METRIC, dp.getMetricId());
         row.addLong(TS_SCHEMA_EVENTTIME, dp.getTimestamp());
-        row.addBinary(TS_SCHEMA_VALUE, dp.getValue().toArray());
+        row.addFloat(TS_SCHEMA_VALUE, dp.getValue());
         apply(insert);
       }
       return Status.OK;
