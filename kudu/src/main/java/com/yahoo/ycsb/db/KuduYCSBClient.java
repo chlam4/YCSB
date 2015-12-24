@@ -87,6 +87,9 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   private static final String TS_SCHEMA_METRIC = "metric";
   private static final String TS_SCHEMA_EVENTTIME = "event_time";
   private static final String TS_SCHEMA_VALUE = "value";
+  // cleanup flags
+  private static final String START_CLEAN_OPT = "kudu_start_clean";
+  private boolean startClean = false;
 
   @Override
   public void init() throws DBException {
@@ -101,8 +104,11 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       this.printErrors =
           getProperties().getProperty(PRINT_ROW_ERRORS_OPT).equals("true");
     }
+    if (getProperties().getProperty(START_CLEAN_OPT) != null) {
+      this.startClean = getProperties().getProperty(START_CLEAN_OPT).equals("true");
+    }
     this.tableName = com.yahoo.ycsb.workloads.CoreWorkload.table;
-    initClient(debug, tableName, getProperties());
+    initClient(debug, tableName, getProperties(), startClean);
     this.session = client.newSession();
     if (getProperties().getProperty(SYNC_OPS_OPT) != null
         && getProperties().getProperty(SYNC_OPS_OPT).equals("false")) {
@@ -122,7 +128,7 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   }
 
   private static synchronized void initClient(boolean debug, String tableName,
-      Properties prop) throws DBException {
+      Properties prop, final boolean startClean) throws DBException {
     if (client != null) {
       return;
     }
@@ -150,6 +156,19 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       System.out.println("Connecting to the masters at " + masterAddresses);
     }
 
+    if (startClean) {
+      System.out.println("Starting up clean and deleting all existing tables");
+      try {
+        for (final String table : client.getTablesList().getTablesList()) {
+          if (debug) {
+            System.out.println("Deleting table " + table);
+          }
+          client.deleteTable(table);
+        }
+      } catch (Exception e) {
+        throw new DBException("Couldn't clean up the database", e);
+      }
+    }
     fieldCount = getIntFromProp(prop, CoreWorkload.FIELD_COUNT_PROPERTY,
         Integer.parseInt(CoreWorkload.FIELD_COUNT_PROPERTY_DEFAULT));
 
