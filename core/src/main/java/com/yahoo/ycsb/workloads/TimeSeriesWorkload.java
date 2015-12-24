@@ -147,7 +147,7 @@ public class TimeSeriesWorkload extends Workload {
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
-        final DataPointWithMetricID dp = new DataPointWithMetricID(
+        final DataPointWithMetricID dp = new DataPointWithMetricID(id,
                 field, loadTimestampGenerator.next(), new FloatByteIterator(floatGenerator.nextFloat()));
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);

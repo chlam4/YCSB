@@ -22,7 +22,10 @@ import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.Status;
 import com.yahoo.ycsb.StringByteIterator;
+import com.yahoo.ycsb.tsdb.DataPoint;
+import com.yahoo.ycsb.tsdb.DataPointWithMetricID;
 import com.yahoo.ycsb.workloads.CoreWorkload;
+
 import org.kududb.ColumnSchema;
 import org.kududb.Schema;
 import org.kududb.client.*;
@@ -33,6 +36,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 
 import static org.kududb.Type.STRING;
 
@@ -79,6 +83,10 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   private String tableName;
   private KuduSession session;
   private KuduTable kuduTable;
+  // Definition of a schema to test time-series workload
+  private static final String TS_SCHEMA_METRIC = "metric";
+  private static final String TS_SCHEMA_EVENTTIME = "event_time";
+  private static final String TS_SCHEMA_VALUE = "value";
 
   @Override
   public void init() throws DBException {
@@ -104,10 +112,12 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       this.session.setFlushMode(KuduSession.FlushMode.AUTO_FLUSH_SYNC);
     }
 
-    try {
-      this.kuduTable = client.openTable(tableName);
-    } catch (Exception e) {
-      throw new DBException("Could not open a table because of:", e);
+    if (tableName != null && !tableName.isEmpty()) {
+      try {
+        this.kuduTable = client.openTable(tableName);
+      } catch (Exception e) {
+        throw new DBException("Could not open a table because of:", e);
+      }
     }
   }
 
@@ -169,21 +179,23 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       builder.addSplitRow(splitRow);
     }
 
-    try {
-      client.createTable(tableName, schema, builder);
-    } catch (Exception e) {
-      if (!e.getMessage().contains("ALREADY_PRESENT")) {
-        throw new DBException("Couldn't create the table", e);
+    if (tableName != null && !tableName.isEmpty()) {
+      try {
+        client.createTable(tableName, schema, builder);
+      } catch (Exception e) {
+        if (!e.getMessage().contains("ALREADY_PRESENT")) {
+          throw new DBException("Couldn't create the table", e);
+        }
       }
     }
 
     // create schema and tables for time-series workload
     final List<ColumnSchema> tsColumns = new ArrayList<ColumnSchema>(3);
-    final ColumnSchema metricId = new ColumnSchema.ColumnSchemaBuilder("metric", org.kududb.Type.INT64)
+    final ColumnSchema metricId = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_METRIC, org.kududb.Type.INT64)
         .key(true).desiredBlockSize(blockSize).build();
-    final ColumnSchema timestamp = new ColumnSchema.ColumnSchemaBuilder("event_time", org.kududb.Type.TIMESTAMP)
+    final ColumnSchema timestamp = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_EVENTTIME, org.kududb.Type.TIMESTAMP)
         .key(true).desiredBlockSize(blockSize).build();
-    final ColumnSchema value = new ColumnSchema.ColumnSchemaBuilder("value", org.kududb.Type.FLOAT)
+    final ColumnSchema value = new ColumnSchema.ColumnSchemaBuilder(TS_SCHEMA_VALUE, org.kududb.Type.FLOAT)
         .desiredBlockSize(blockSize).build();
     tsColumns.add(metricId);
     tsColumns.add(timestamp);
@@ -370,5 +382,34 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
         ex.printStackTrace();
       }
     }
+  }
+
+  @Override
+  public Status insertDatapoints(final String table, final String measurement,
+      TimeUnit timeUnit, final List<DataPointWithMetricID> datapoints) {
+    try {
+      final KuduTable kt = client.openTable(table);
+      for (final DataPointWithMetricID dp : datapoints) {
+        final Insert insert = kt.newInsert();
+        final PartialRow row = insert.getRow();
+        row.addLong(TS_SCHEMA_METRIC, dp.getMetricId());
+        row.addLong(TS_SCHEMA_EVENTTIME, dp.getTimestamp());
+        row.addBinary(TS_SCHEMA_VALUE, dp.getValue().toArray());
+        apply(insert);
+      }
+      return Status.OK;
+    } catch (Exception e) {
+      System.err.println("Could not open a table because of:" + e.getMessage());
+      return Status.ERROR;
+    }
+  }
+
+  @Override
+  public Status scanDatapoints(final String table, final String key, final String field,
+      final long startTime, final long endTime, final TimeUnit timeUnit,
+      final Vector<DataPoint> result) {
+//    final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
+//    final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
+    return Status.OK;
   }
 }

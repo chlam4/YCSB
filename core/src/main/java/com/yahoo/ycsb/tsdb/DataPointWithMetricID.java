@@ -9,15 +9,21 @@ import com.yahoo.ycsb.ByteIterator;
  *
  */
 public class DataPointWithMetricID extends DataPoint {
-    private final String metricId;
+    private final long metricId;
+    private final String metricName;
     
-    public DataPointWithMetricID(String metricId, long timestamp, ByteIterator value) {
+    public DataPointWithMetricID(final long metricId, final String metricName, long timestamp, ByteIterator value) {
         super(timestamp, value);
         this.metricId = metricId;
+        this.metricName = metricName;
     }
     
-    public String getMetricId() {
+    public long getMetricId() {
         return metricId;
+    }
+
+    public String getMetricName() {
+        return metricName;
     }
 
     @Override

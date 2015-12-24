@@ -97,7 +97,7 @@ public class InfluxDBClient extends DB {
         for (final DataPointWithMetricID dp : datapoints) {
             final Point p = Point.measurement(measurement)
                     .time(dp.getTimestamp(), timeUnit)
-                    .field(dp.getMetricId(), dp.getValue()).build();
+                    .field(dp.getMetricName(), dp.getValue()).build();
             influxDB.write(table, "default", p);
         }
         return Status.OK;
