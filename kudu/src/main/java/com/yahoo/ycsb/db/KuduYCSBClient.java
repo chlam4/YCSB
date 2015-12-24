@@ -424,11 +424,59 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   }
 
   @Override
-  public Status scanDatapoints(final String table, final String key, final String field,
-      final long startTime, final long endTime, final TimeUnit timeUnit,
-      final Vector<DataPoint> result) {
-//    final long startTimeInNano = TimeUnit.NANOSECONDS.convert(startTime, timeUnit);
-//    final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
+  public Status scanDatapoints(final String table, final long metricId, final String measurement, final String field,
+      final long startTime, final long endTime, final TimeUnit timeUnit, final Vector<DataPoint> result) {
+    try {
+      final KuduTable kt = client.openTable(table);
+      KuduScanner.KuduScannerBuilder scannerBuilder = client.newScannerBuilder(kt);
+      scannerBuilder.setProjectedColumnNames(java.util.Arrays.asList(TS_SCHEMA_EVENTTIME, TS_SCHEMA_VALUE));
+
+      //
+      // Setting appropriate lower/upper bounds to get for the given metric id only
+      //
+      final PartialRow lowerBound = tsSchema.newPartialRow();
+      lowerBound.addLong(0, metricId);
+      scannerBuilder.lowerBound(lowerBound);
+      final PartialRow upperBound = tsSchema.newPartialRow();
+      upperBound.addLong(0, metricId+1);
+      scannerBuilder.exclusiveUpperBound(upperBound);
+      //
+      // Setting column range filter for the desired time range
+      //
+      final ColumnRangePredicate rangePredicate = new ColumnRangePredicate(tsSchema.getColumnByIndex(1));
+      rangePredicate.setLowerBound(startTime);
+      rangePredicate.setUpperBound(endTime);
+      scannerBuilder.addColumnRangePredicate(rangePredicate);
+
+      KuduScanner scanner = scannerBuilder.build();
+      while (scanner.hasMoreRows()) {
+        RowResultIterator data = scanner.nextRows();
+        addAllRowsToDataPointResult(data, result);
+      }
+      RowResultIterator closer = scanner.close();
+      addAllRowsToDataPointResult(closer, result);
+    } catch (TimeoutException te) {
+      if (printErrors) {
+        System.err.println("Waited too long while scanning datapoints on metricId=" +
+            metricId + " between " + startTime + " and " + endTime);
+      }
+      return TIMEOUT;
+    } catch (Exception e) {
+      System.err.println("Unexpected exception " + e);
+      e.printStackTrace();
+      return Status.ERROR;
+    }
     return Status.OK;
+  }
+
+  private void addAllRowsToDataPointResult(RowResultIterator it, Vector<DataPoint> result) throws Exception {
+    if (it == null) {
+      return;
+    }
+    for (final RowResult row : it) {
+      final long ts = row.getLong(1);
+      final float v = row.getFloat(2);
+      result.add(new DataPoint(ts, v));
+    }
   }
 }

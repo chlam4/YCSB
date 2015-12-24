@@ -104,7 +104,7 @@ public class InfluxDBClient extends DB {
     }
 
     @Override
-    public Status scanDatapoints(final String table, final String key, final String field,
+    public Status scanDatapoints(final String table, final long metricId, final String measurement, final String field,
             final long startTime, final long endTime, final TimeUnit timeUnit,
             final Vector<DataPoint> result) {
         createTableIfNotExists(table);
@@ -112,7 +112,7 @@ public class InfluxDBClient extends DB {
         final long endTimeInNano = TimeUnit.NANOSECONDS.convert(endTime, timeUnit);
         final String qs = String.format(
                 "SELECT %s FROM %s WHERE time >= %d AND time <= %d", field,
-                key, startTimeInNano, endTimeInNano);
+                measurement, startTimeInNano, endTimeInNano);
         final QueryResult queryResult = influxDB.query(new Query(qs, table)); // TODO: Shall we parse the query results?
         if (rand.nextInt(10000) == 0) {
             System.out.println(String.format("  Query: %s\n  Result (%d): %s", qs, queryResult.getResults().get(0).getSeries().get(0).getValues().size(), queryResult.toString()));

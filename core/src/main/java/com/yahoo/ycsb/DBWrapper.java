@@ -247,12 +247,11 @@ public class DBWrapper extends DB
   }
 
   @Override
-  public Status scanDatapoints(String table, String key, String field,
-          long startTime, long endTime,
-          java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
+  public Status scanDatapoints(String table, long metricId, String measurement, String field,
+          long startTime, long endTime, java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
       long ist=_measurements.getIntendedtartTimeNs();
       long st = System.nanoTime();
-      Status res=_db.scanDatapoints(table, key, field, startTime, endTime,
+      Status res=_db.scanDatapoints(table, metricId, measurement, field, startTime, endTime,
               timeUnit, result);
       long en=System.nanoTime();
       measure("SCANDATAPOINTS", res, ist, st, en);

@@ -164,7 +164,7 @@ public class TimeSeriesWorkload extends Workload {
         final String table = getTableName(id);
         final String measurement = getMeasurementName(id);
         final String field = getFieldName(id);
-        if (db.scanDatapoints(table, measurement, field, endTime-queryLength, endTime,
+        if (db.scanDatapoints(table, id, measurement, field, endTime-queryLength, endTime,
                 timeUnit, new Vector<DataPoint>()) == Status.OK) {
             return true;
         }

@@ -156,7 +156,8 @@ public abstract class DB
     /**
      * Perform a query on the given metric (key/field) over a period of time.
      * @param table The name of the table
-     * @param key The name of the key (or measurement)
+     * @param metricId The id of the metric
+     * @param measurement The name of the measurement
      * @param field The name of the field (or metric)
      * @param startTime The starting time
      * @param endTime The ending time
@@ -164,7 +165,7 @@ public abstract class DB
      * @param result The query result
      * @return The result of the operation.
      */
-    public Status scanDatapoints(String table, String key, String field,
+    public Status scanDatapoints(String table, long metricId, String measurement, String field,
             long startTime, long endTime,
             java.util.concurrent.TimeUnit timeUnit, Vector<DataPoint> result) {
         return Status.NOT_IMPLEMENTED;

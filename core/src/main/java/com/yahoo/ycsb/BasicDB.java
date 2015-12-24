@@ -266,14 +266,14 @@ public class BasicDB extends DB
     }
 
     @Override
-    public Status scanDatapoints(final String table, final String key, final String field,
+    public Status scanDatapoints(final String table, final long metricId, final String measurement, final String field,
             final long startTime, final long endTime, final TimeUnit timeUnit,
             final Vector<DataPoint> result) {
         delay();
 
         if (verbose)
         {
-            System.out.println("SCAN datapoints "+table+" "+key+" "+field+" from "+startTime+" to "+endTime);
+            System.out.println("SCAN datapoints "+table+" "+metricId+" "+measurement+" "+field+" from "+startTime+" to "+endTime);
         }
         return Status.OK;
     }
