@@ -85,9 +85,6 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
   private KuduTable kuduTable;
   // Definition of a schema to test time-series workload
   private static enum TimeSeriesSchema {metric, event_time, value};
-  private static final String TS_SCHEMA_METRIC = "metric";
-  private static final String TS_SCHEMA_EVENTTIME = "event_time";
-  private static final String TS_SCHEMA_VALUE = "value";
   // cleanup flags
   private static final String START_CLEAN_OPT = "kudu_start_clean";
   private boolean startClean = false;
@@ -412,9 +409,9 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       for (final DataPointWithMetricID dp : datapoints) {
         final Insert insert = kt.newInsert();
         final PartialRow row = insert.getRow();
-        row.addLong(TS_SCHEMA_METRIC, dp.getMetricId());
-        row.addLong(TS_SCHEMA_EVENTTIME, dp.getTimestamp());
-        row.addFloat(TS_SCHEMA_VALUE, dp.getValue());
+        row.addLong(TimeSeriesSchema.metric.name(), dp.getMetricId());
+        row.addLong(TimeSeriesSchema.event_time.name(), dp.getTimestamp());
+        row.addFloat(TimeSeriesSchema.value.name(), dp.getValue());
         apply(insert);
       }
       return Status.OK;
