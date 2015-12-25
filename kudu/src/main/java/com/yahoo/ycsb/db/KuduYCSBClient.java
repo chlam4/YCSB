@@ -413,6 +413,10 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
         row.addLong(TimeSeriesSchema.event_time.name(), dp.getTimestamp());
         row.addFloat(TimeSeriesSchema.value.name(), dp.getValue());
         apply(insert);
+        if (debug) {
+          System.out.println(String.format("Inserted metric %d timestamp %d value %f",
+              dp.getMetricId(), dp.getTimestamp(), dp.getValue()));
+        }
       }
       return Status.OK;
     } catch (Exception e) {

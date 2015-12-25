@@ -37,7 +37,7 @@ public class TimeSeriesWorkload extends Workload {
     private int measurementCount;
     private String fieldPrefix;
     private int fieldCount;
-    private final AtomicLong index = new AtomicLong();
+    private final AtomicLong insertSeqNo = new AtomicLong();
 
     @Override
     public void init(Properties p) throws WorkloadException {
@@ -108,45 +108,54 @@ public class TimeSeriesWorkload extends Workload {
     }
 
     /**
-     * Compute the corresponding table name given a long integer id.
-     * @param id
+     * Compute the corresponding table name given the insertion id.
+     * @param insertId Id of the insertion
      * @return Table name
      */
-    private String getTableName(final long id) {
-        return tablePrefix + (getMeasurementId(id)*fieldCount + getFieldId(id)) % tableCount;
+    private String getTableName(final long insertId) {
+        return tablePrefix + (getMeasurementId(insertId)*fieldCount + getFieldId(insertId)) % tableCount;
     }
 
     /**
-     * Compute the corresponding measurement name given a long integer id.
-     * @param id
+     * Compute the corresponding measurement name given the insertion id.
+     * @param insertId Id of the insertion
      * @return Measurement name
      */
-    private String getMeasurementName(final long id) {
-        return measurementPrefix + getMeasurementId(id);
+    private String getMeasurementName(final long insertId) {
+        return measurementPrefix + getMeasurementId(insertId);
     }
-    private long getMeasurementId(final long id) {
-        return (id/fieldCount)%measurementCount;
+    private long getMeasurementId(final long insertId) {
+        return (insertId/fieldCount)%measurementCount;
     }
 
     /**
-     * Compute the corresponding field name given a long integer id.
-     * @param id
+     * Compute the corresponding field name given the insertion id.
+     * @param insertId Id of the insertion
      * @return Field name
      */
-    private String getFieldName(final long id) {
-        return fieldPrefix + getFieldId(id);
+    private String getFieldName(final long insertId) {
+        return fieldPrefix + getFieldId(insertId);
     }
-    private long getFieldId(final long id) {
-        return id%fieldCount;
+    private long getFieldId(final long insertId) {
+        return insertId%fieldCount;
+    }
+
+    /**
+     * Compute the metric ID given the insertion id.
+     * @param insertId Id of the insertion
+     * @return The metric ID
+     */
+    private long getMetricId(final long insertId) {
+        return insertId%((long)measurementCount*fieldCount);
     }
 
     @Override
     public boolean doInsert(DB db, Object threadstate) {
-        final long id = index.getAndIncrement();
-        final String table = getTableName(id);
-        final String measurement = getMeasurementName(id);
-        final String field = getFieldName(id);
-        final DataPointWithMetricID dp = new DataPointWithMetricID(id,
+        final long insertId = insertSeqNo.getAndIncrement();
+        final String table = getTableName(insertId);
+        final String measurement = getMeasurementName(insertId);
+        final String field = getFieldName(insertId);
+        final DataPointWithMetricID dp = new DataPointWithMetricID(getMetricId(insertId),
                 field, loadTimestampGenerator.next(), floatGenerator.nextFloat());
         final List<DataPointWithMetricID> datapoints = new ArrayList<DataPointWithMetricID>();
         datapoints.add(dp);
