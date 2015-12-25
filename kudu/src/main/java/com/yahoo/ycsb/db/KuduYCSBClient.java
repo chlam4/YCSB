@@ -461,7 +461,8 @@ public class KuduYCSBClient extends com.yahoo.ycsb.DB {
       RowResultIterator closer = scanner.close();
       addAllRowsToDataPointResult(closer, result);
       if (debug) {
-        System.out.println("Query result: " + result);
+        System.out.println(String.format("Query result for metric %d between %d and %d: %s",
+            metricId, startTime, endTime, result));
       }
     } catch (TimeoutException te) {
       if (printErrors) {
