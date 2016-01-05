@@ -72,7 +72,7 @@ public class TimeSeriesWorkload extends Workload {
         //
         // query parameters and time stamp generator
         //
-        timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "SECONDS"));
+        timeUnit = TimeUnit.valueOf(p.getProperty("tsdb.timeUnit", "MILLISECONDS"));
         queryLength = Long.parseLong(p.getProperty("tsdb.query.length", Long.toString(timeUnit.convert(1, TimeUnit.HOURS))));
         final Long currTime = timeUnit.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // in specified unit
         final long lowerbound = Long.parseLong(p.getProperty("tsdb.query.lowerbound", currTime.toString()));
@@ -108,6 +108,7 @@ public class TimeSeriesWorkload extends Workload {
             final int step = Integer.parseInt(p.getProperty("tsdb.timestamp.step", "10"));
             final Long perStepCount = ((long) fieldCount * measurementCount * step - 1) / pollingInterval + 1;
             System.out.println(String.format("Generating timestamps based on start time %d, polling interval %d and step size %d.", startTime, pollingInterval, step));
+            System.out.println(String.format("PerstepCount %d.", perStepCount));
             loadTimestampGenerator = new StepTimestampGenerator(startTime, step, perStepCount);
         } else { // default to "Realtime"
             final Integer defaultPerStepCount = java.lang.Math.min(1000, measurementCount * fieldCount);

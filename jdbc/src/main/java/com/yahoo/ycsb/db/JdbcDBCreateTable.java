@@ -24,6 +24,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.text.SimpleDateFormat;
+import java.sql.ResultSet;
+import java.util.Date;
+import java.util.TimeZone;
+import java.sql.PreparedStatement;
 
 /**
  * Utility class to create the table to be used by the benchmark.
@@ -40,6 +45,69 @@ public class JdbcDBCreateTable implements JdbcDBClientConstants {
     System.out.println("  -n   name of the table.");
     System.out.println("  -f   number of fields (default 10).");
   }
+
+public static void createMetaTable(Properties props, String tablePrefix, String metaTablePrefix)
+		  throws SQLException {
+	  String driver = props.getProperty(DRIVER_CLASS);
+	    String username = props.getProperty(CONNECTION_USER);
+	    String password = props.getProperty(CONNECTION_PASSWD, "");
+	    String url = props.getProperty(CONNECTION_URL);
+	    int fieldcount = Integer.parseInt(props.getProperty(FIELD_COUNT_PROPERTY, 
+	        FIELD_COUNT_PROPERTY_DEFAULT));
+		SimpleDateFormat formatter = new SimpleDateFormat("MM.dd  hh:mm:ss a");
+		formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+	    
+	    if (driver == null || username == null || url == null) {
+	      throw new SQLException("Missing connection information.");
+	    }
+	    
+	    Connection conn = null;
+	    
+	    try {
+	      Class.forName(driver);
+	      
+	      conn = DriverManager.getConnection(url, username, password);
+	      Statement stmt = conn.createStatement();
+	      
+	      int oldMaxTime = 0;
+	      for(int j=0; j<4; j++){
+				 
+	      String metaTableName = metaTablePrefix;
+	      
+	      StringBuilder sql = new StringBuilder("DROP TABLE IF EXISTS ");
+	      sql.append(metaTableName);
+	      sql.append(";");
+	      
+              PreparedStatement preparedStatement, preparedStatement1, preparedStatement2 = null;
+	      stmt.execute(sql.toString());
+              stmt.execute("CREATE TABLE metaTable (`tableName` varchar(11) not NULL, `minTime` int(11) not NULL, `maxTime` int(11) not Null) ENGINE=MyISAM DEFAULT CHARSET=utf8");
+	      
+	        System.out.println("table created");
+	      String tableName = "mydbBulk_"+j+"_0";
+	     	         preparedStatement = conn.prepareStatement("SELECT min(timestamp), max(timestamp)  FROM "+ tableName);  
+                         ResultSet resultSet = preparedStatement.executeQuery();
+	        System.out.println("table seleteced");
+		         while (resultSet.next()){
+		       int minTime = 	resultSet.getInt(1);
+		       int  maxTime =   resultSet.getInt(2);
+		        //if (maxTime <  oldMaxTime)  break;
+		        System.out.println(tableName+", " + formatter.format(new Date((long)minTime*1000))+", " + formatter.format(new Date((long)maxTime*1000)));
+		        System.out.println("old max time "+oldMaxTime);
+		        preparedStatement = conn.prepareStatement("INSERT INTO metaTable (tableName, minTime, maxTime) VALUES("+String.valueOf(j)+", "+minTime+", "+maxTime+")");
+		        oldMaxTime = maxTime;
+		 }
+		        preparedStatement.executeUpdate();
+	   }
+	      
+	    } catch (ClassNotFoundException e) {
+	        throw new SQLException("JDBC Driver class not found.");
+	      } finally {
+	        if (conn != null) {
+	          System.out.println("Closing database connection.");
+	          conn.close();
+	        }
+	      }
+	}
   
   public static void createTable(Properties props, String tablename)
   throws SQLException {
@@ -217,7 +285,12 @@ public class JdbcDBCreateTable implements JdbcDBClientConstants {
     }
     
     try {
+      if (tablename.startsWith("meta")) {
+          createMetaTable(props, "mydbBulk_", tablename);
+      }
+      else {
       createTable(props, tablename);
+      }
     } catch (SQLException e) {
       System.err.println("Error in creating table. " + e);
       System.exit(1);

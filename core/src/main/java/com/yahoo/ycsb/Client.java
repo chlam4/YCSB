@@ -266,6 +266,7 @@ class ClientThread extends Thread
     _workload=workload;
     _opcount=opcount;
     _opsdone=0;
+    props.put("dotransactions", String.valueOf(dotransactions));
     if(targetperthreadperms > 0){
       _targetOpsPerMs=targetperthreadperms;
       _targetOpsTickNs=(long)(1000000/_targetOpsPerMs);
@@ -287,6 +288,7 @@ class ClientThread extends Thread
     try
     {
       _db.init();
+
     }
     catch (DBException e)
     {

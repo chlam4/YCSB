@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -84,9 +85,11 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	ConcurrentMap<Integer, ArrayList<Integer>> metaTable = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
 	private int batchSize;
 	private boolean done = false;
-	ExecutorService executorService = Executors.newFixedThreadPool(6);
+	ExecutorService executorService = Executors.newFixedThreadPool(24);
     Map<String, BlockingQueue<YcsbEntity>> blockingQueueMap = new HashMap<String, BlockingQueue<YcsbEntity>>();
     long threadId = Thread.currentThread().getId();
+    static AtomicInteger threadCount = new AtomicInteger(0);
+
 
 
 	private static final Random rand = new Random();
@@ -209,6 +212,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		String user = props.getProperty(CONNECTION_USER, DEFAULT_PROP);
 		String passwd = props.getProperty(CONNECTION_PASSWD, DEFAULT_PROP);
 		String driver = props.getProperty(DRIVER_CLASS);
+                boolean dotransactions = Boolean.parseBoolean(props.getProperty("dotransactions", "true"));
 		batchSize = Integer.parseInt(props.getProperty(BATCH_SIZE, "10000"));
 		
 		String jdbcFetchSizeStr = props.getProperty(JDBC_FETCH_SIZE);
@@ -232,7 +236,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				Class.forName(driver);
 			}
 			int shardCount = 0;
-			conns = new ArrayList<Connection>(18);
+			conns = new ArrayList<Connection>(3);
 			for (String url : urls.split(",")) {
                                 for (int i = 0 ; i < 6 ; i++) {
 				System.out.println("Adding shard node URL: " + url);
@@ -267,12 +271,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 			throw new DBException(e);
 		}
 		try {
+                // Start loading trheads if loading task
+                if (!dotransactions) {         
 
-			// invokeAll() blocks until both tasks have completed
-	           
 
-                   for (int i = 0 ; i < 6; i++){
-                	   for(int j=0; j<4; j++){
+                   for (int i = 0 ; i < 4; i++){
+                	   for(int j=0; j<6; j++){
                 		   String tableId =  i+"_"+j+ "_"+threadId;
                      BlockingQueue<YcsbEntity> blockingQueue = new LinkedBlockingQueue<YcsbEntity>( batchSize * 2);
 				     blockingQueueMap.put(tableId,blockingQueue);
@@ -283,11 +287,25 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
                     System.out.println("Started Thread"+ i+"_"+j);
 			}
                    }
+                //   Crate Metatable is  query task
+                }
+                /*
+                else {  
+                  synchronized(this) {
+                      if (threadCount.getAndIncrement() == 0) {
+                         System.out.println("createmetaTable");
+                         JdbcDBCreateTable.createMetaTable(props,"mydbBulk_","metaTable" );
+                      }
+                  }
+                }
+                */
+                   
 		} catch (Exception e) {
 			System.err.println("Failed to load feed. "
 					+ e.getLocalizedMessage());
 			throw new RuntimeException("Failed to load feed.", e);
 		}
+
 		initialized = true;
 	}
 
@@ -592,38 +610,21 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		      
                         String[] split = tableId.split("_");
                         String tableName = "mydbBulk_"+split[0]+"_"+split[1];
-		  				try {
-		  				//	Statement stmt = conn.createStatement();
-		  			      long t0 = System.currentTimeMillis();
-		  	             //  JdbcDBCreateTable.createTable(props, tableName);
-		                     String loadString = "LOAD DATA LOCAL INFILE '/data/disk08/textfiles/"+tableId+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
-		                   PreparedStatement preparedStatement = conn
-		  							.prepareStatement(loadString);
-		  					
-		  					ResultSet resultSet = preparedStatement.executeQuery();
+		        try {
+		            long t0 = System.currentTimeMillis();
+		            String loadString = "LOAD DATA LOCAL INFILE '/data/disk08/textfiles/"+tableId+"' INTO TABLE "+tableName+" FIELDS TERMINATED BY ','";
+		            PreparedStatement preparedStatement = conn.prepareStatement(loadString);
+		  	    ResultSet resultSet = preparedStatement.executeQuery();
 		  				
-		  		long t1 = System.currentTimeMillis();
-		  		long time = (t1-t0)/(1000);
-		  		System.out.println(tableName+" finished importing data time (seconds): "+String.valueOf(time));
-		               // if (tableName == "adv") break;
-		                //}
-		                //}
-		                //stmt.execute("ALTER TABLE mydb_test_0_0 ENABLE KEYS");
-		  	//	long t2 = System.currentTimeMillis();
-		  	//	long time = (t2-t0)/(1000);
-		  	//	System.out.println(" finished importing data time (seconds): "+String.valueOf(time));
-		                
-		  					
+		  	    long t1 = System.currentTimeMillis();
+		  	    long time = (t1-t0)/(1000);
+		  	//	System.out.println(tableName+" finished importing data time (seconds): "+String.valueOf(time));
 
-		  				} catch (SQLException e) {
+		         } catch (SQLException e) {
 		  					// TODO Auto-generated catch block
 		  					e.printStackTrace();
 		  				}
-		  		//	}
-		  		//}
-		  		
-		    
-		return SUCCESS;
+		         return SUCCESS;
 	}
 	
 	public int insertBatch(List<YcsbEntity> entities, Connection conn) {
@@ -655,17 +656,11 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
                                 int i = 0;
 				for (YcsbEntity e : entityMap.get(tableName)) {
 
-                         //if (rand.nextInt(9999) == 0) System.out.println("Insert:" + e.toString());
-					// Add each parameter to the row.
-				        
-       //                 System.out.println("psmt: "+e.toString());
-
 					pstmt.setLong(1,
 							Long.parseLong(e.key.replaceAll("^field", "")));
 					pstmt.setLong(2, e.key1);
 					int index = 3;
                                         
-                //System.out.println(" enttiies in map entties "+e.values);
                                          pstmt.setFloat(3, Float.parseFloat(e.value.toString()));
 /*					for (Map.Entry<String, ByteIterator> entry : e.values
 							.entrySet()) {
@@ -677,11 +672,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 
                                   i++;
 				}
-                          //      System.out.println(pstmt.toString());
 				List result = Arrays.asList(pstmt.executeBatch());
-                             //  conn.commit();
                               
-                //                System.out.println("Batches: " +i);
 				if (!result.contains(1))
 					continue;
 				else
@@ -768,7 +760,6 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	private void createFileIfNotExists(final String fileName)
 			 {
 
-		if (!fileCreatedMap.containsKey(fileName)) {
 			File file = new File("/data/disk08/textfiles/" + fileName);
 			if (file.exists()) {
 				file.delete();
@@ -777,16 +768,13 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 
 			try {
 				file.createNewFile();
-			
 		
 			FileWriter fw = new FileWriter(file.getAbsoluteFile());
-			//BufferedWriter bw = new BufferedWriter(fw);
 			fileCreatedMap.put(fileName, fw);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		}
 	}
 
 	/*
@@ -805,10 +793,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 	 */
 
 	private void writeTable(String table, String variable, long timeStamp,
-			ByteIterator value) throws IOException {
-		FileWriter fw = fileCreatedMap.get(table);
+			ByteIterator value)  {
+		
+                try {
+                FileWriter fw = fileCreatedMap.get(table);
 		StringBuffer buff = new StringBuffer();
-		buff.append(variable + ',' + timeStamp+", "+value.toString());
+		buff.append(variable.replaceAll("^field", "") + ',' + timeStamp+", "+value.toString());
 		/*
 		for (Map.Entry<String, ByteIterator> entry : dpMap.entrySet()) {
 			String field = entry.getValue().toString();
@@ -817,7 +807,12 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		*/
 		// System.out.println(buff.toString());
 		buff.append('\n');
+                
 		fw.write(buff.toString());
+                } catch (Exception e) {
+                    System.err.println("write table excption "+ table);
+                    e.printStackTrace();
+                }
 
 	}
 
@@ -850,7 +845,6 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 			
 			
 			createTableIfNotExists(table);
-			createFileIfNotExists(tableId);
 		} catch (SQLException e) {
 			System.err.println("Error in createing table: " + table + e);
 			return -1;
@@ -860,13 +854,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
         for (final DataPointWithMetricID dp : datapoints) {
 			HashMap<String, ByteIterator> dpMap = new HashMap<String, ByteIterator>();
 			dpMap.put("value", dp.getValue());
-                        YcsbEntity entity = new YcsbEntity(table, dp.getMetricId(), dp.getTimestamp(), dp.getValue());
+                        YcsbEntity entity = new YcsbEntity(table, dp.getMetricId(), dp.getTimestamp()/1000, dp.getValue());
                         blockingQueueMap.get(tableId).put(entity);
-                        //YcsbEntity e = blockingQueue.take();
-                        //System.out.println("take:" + e.toString());
-                        //}
-			// insert2Keys(table, dp.getMetricId(), dp.getTimestamp()/1000,
-			// dpMap);
 			dpMap.clear();
 		}
                 }
@@ -925,8 +914,8 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 					.prepareStatement(qs);
 			ResultSet resultSet = preparedStatement.executeQuery();
 			if (rand.nextInt(10000) == 0) {
-				System.out.println(String.format("  Query: %s\n  Result: %s",
-						qs, resultSet.toString()));
+				System.out.println(String.format("  Query: %s\n  Result: %d",
+						qs, resultSet.getFetchSize()));
 			}
 		} catch (SQLException e) {
 			System.out.println(qs + ", " + startTimeInNano + ", "
@@ -953,27 +942,33 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 					groupList.add(resultSet.getInt(3));
 					metaTable.put(resultSet.getInt(1), groupList);
 				}
+                                System.out.println(metaTable.toString());
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
 		}
+         
 		StringBuffer buff = new StringBuffer();
+                Long longField = Long.parseLong(field.replaceAll("^field", ""));
 		for (Integer key : metaTable.keySet()) {
-			if (startTime < metaTable.get(key).get(0)
-					&& startTime >= metaTable.get(key).get(1)) {
-				tableName = "mydb_" + key.intValue() + "_" + group;
+			if (startTime < metaTable.get(key).get(1)
+					&& startTime >= metaTable.get(key).get(0)) {
+				tableName = "mydbBulk_" + key.intValue() + "_" + group;
 				buff.append("SELECT value FROM " + tableName
-						+ " WHERE variable = '" + field + "' and timestamp >= "
+						+ " WHERE variable = '" + longField + "' and timestamp >= "
 						+ startTime);
-				if (endTime > metaTable.get(key).get(0)) {
+				if (endTime > metaTable.get(key).get(1)) {
 					buff.append(" AND timestamp <= "
-							+ metaTable.get(key).get(0));
+							+ metaTable.get(key).get(1));
 					buff.append(" UNION ALL ");
 					Integer key2 = key + 1;
-					tableName = "mydb_" + key2 + "_" + group;
+					tableName = "mydbBulk_" + key2 + "_" + group;
+                                        //System.out.println(metaTable.toString() + key2);
+                                        //System.out.println(metaTable.get(key2));
+                                        //System.out.println(metaTable.get(key2).get(1));
 					long midStart = metaTable.get(key2).get(1);
 					buff.append("SELECT value FROM " + tableName
-							+ " WHERE variable = '" + field
+							+ " WHERE variable = '" + longField
 							+ "' and timestamp >= " + midStart);
 					buff.append(" AND timestamp <= " + endTime);
 				} else {
@@ -981,6 +976,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				}
 			}
 		}
+                //System.out.println("quesry string: "+buff.toString());
 		return buff.toString();
 	}
 
@@ -1000,6 +996,7 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 		public void run() {
 		//	List<YcsbEntity>  entities = new ArrayList<YcsbEntity>(batchSize);
             queue = blockingQueueMap.get(tableId);
+            createFileIfNotExists(tableId);
 			// "done" is set to false when the parser is done, at which point
 			// all remaining entities will be in the queue.
 			int count = 0;
@@ -1007,21 +1004,19 @@ public class JdbcDBClient extends DB implements JdbcDBClientConstants {
 				try {
                                         YcsbEntity e = queue.take();
                                         persister.writeTable(tableId, e.key, e.key1, e.value);                                     
-                                        //if (rand.nextInt(9997) == 0) System.out.println("take:" + e.toString());
-			//		entities.add(e);
                   
 					if (count++ >= batchSize) {
-						persister.insertFileBatch(tableId, conn);
-						fileCreatedMap.get(tableId).flush();
+                                          fileCreatedMap.get(tableId).close();
+					  persister.insertFileBatch(tableId, conn);
+					  //System.err.println("Failed to load feed." + tableId);
+                                                createFileIfNotExists(tableId);
+                                                count=0;
 						
 					}
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					System.err.println("Failed to load feed." + e.getMessage());
 					throw new RuntimeException("Failed to load feed.", e);
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+                                }
 			}
 			//TODO  handle remaining entries 
 			// if (!entities.isEmpty()) {
