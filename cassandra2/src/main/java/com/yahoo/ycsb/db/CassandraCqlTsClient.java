@@ -136,8 +136,8 @@ public class CassandraCqlTsClient extends DB{
 
             try {
 
-                _debug = Boolean.parseBoolean(getProperties().getProperty("debug", "false"));
-                intMetricIds = Boolean.parseBoolean(getProperties().getProperty("intMetricIds", "false"));
+                _debug = Boolean.parseBoolean(getProperties().getProperty("cassandra.debug", "false"));
+                intMetricIds = Boolean.parseBoolean(getProperties().getProperty("cassandra.intMetricIds", "false"));
 
                 String host = getProperties().getProperty(HOSTS_PROPERTY);
                 if (host == null) {
